@@ -977,6 +977,10 @@ export type Database = {
         Args: { p_base: number; p_completed_at: string; p_user_id: string }
         Returns: number
       }
+      _recovery_xp_total: {
+        Args: { p_days: number; p_difficulty: string }
+        Returns: number
+      }
       _refund_xp_for_user: {
         Args: {
           p_amount: number
@@ -1027,6 +1031,7 @@ export type Database = {
       get_weekly_boss_progress: { Args: never; Returns: Json }
       project_future: { Args: { p_days: number }; Returns: Json }
       recalc_xp: { Args: never; Returns: undefined }
+      recompute_user_xp: { Args: { p_user: string }; Returns: number }
       record_timeline: {
         Args: {
           p_category: string
@@ -1040,6 +1045,17 @@ export type Database = {
         Returns: undefined
       }
       sync_life_state: { Args: never; Returns: Json }
+      xp_ledger_for: {
+        Args: { p_user: string }
+        Returns: {
+          amount: number
+          custom_skill_id: string
+          occurred_at: string
+          skill: Database["public"]["Enums"]["skill_category"]
+          source: string
+          source_key: string
+        }[]
+      }
     }
     Enums: {
       bad_habit_difficulty: "easy" | "medium" | "hard"
