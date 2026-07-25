@@ -58,25 +58,27 @@ export function progressToNextSkill(totalXp: number, level?: number) {
   };
 }
 
-export async function awardXp(amount: number, source: string, skill?: string) {
+/**
+ * O XP não é mais somado incrementalmente: ele é SEMPRE derivado dos registros
+ * existentes (missões, hábitos, treinos, finanças, diário, biblioteca, saúde,
+ * foco, recuperação). Esta chamada apenas força o recálculo total no banco.
+ * Qualquer INSERT/UPDATE/DELETE nesses módulos já recalcula automaticamente.
+ */
+export async function awardXp(_amount?: number, _source?: string, _skill?: string) {
   const { error } = await supabase.rpc("award_xp", {
-    p_amount: amount,
-    p_source: source,
-    p_skill: (skill as any) ?? null,
+    p_amount: 0,
+    p_source: "recompute",
+    p_skill: null as any,
   });
   if (error) throw error;
 }
 
-/**
- * Recalcula XP, nível, streak, skills, rank, títulos e Life Score a partir
- * dos registros existentes (fonte única: xp_history). Idempotente.
- * O banco já dispara isso automaticamente em qualquer INSERT/UPDATE/DELETE
- * no ledger — este helper é para forçar sincronização manual quando útil.
- */
+/** Força o recálculo completo (XP, nível, skills, rank, títulos, Life Score). */
 export async function RecalcularXP() {
   const { error } = await supabase.rpc("recalc_xp" as any);
   if (error) throw error;
 }
+
 
 export async function completeHabitToday(habitId: string) {
   const { error } = await supabase.rpc("complete_habit_today", { p_habit_id: habitId });
