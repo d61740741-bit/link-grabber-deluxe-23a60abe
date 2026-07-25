@@ -42,14 +42,22 @@ function Missoes() {
   });
 
   async function complete(t: any) {
-    const { data } = await supabase.from("tasks").update({ completed: true }).eq("id", t.id).select("xp_granted,xp_reward").single();
-    const gained = (data as any)?.xp_granted ?? t.xp_reward;
-    const bonus = gained - t.xp_reward;
+    const { error } = await supabase.from("tasks").update({ completed: true }).eq("id", t.id);
+    if (error) {
+      toast.error("Não foi possível concluir a missão");
+      return;
+    }
+    // xp_granted é preenchido por trigger AFTER UPDATE, então precisa ser lido depois do update.
+    const { data } = await supabase.from("tasks").select("xp_granted,xp_reward").eq("id", t.id).single();
+    const gained = Number((data as any)?.xp_granted) || 0;
+    const base = Number((data as any)?.xp_reward ?? t.xp_reward) || 0;
+    const bonus = gained - base;
     toast.success(`+${gained} XP`, {
-      description: bonus > 0 ? `Missão concluída · bônus +${bonus}` : bonus < 0 ? `Missão concluída · penalidade ${bonus}` : "Missão concluída",
+      description: bonus > 0 ? `Missão concluída · bônus +${bonus}` : "Missão concluída",
     });
     qc.invalidateQueries();
   }
+
 
 
   async function remove(id: string) {
