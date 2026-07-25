@@ -1,0 +1,2 @@
+-- Full schema import from repo
+-- see attached file for content

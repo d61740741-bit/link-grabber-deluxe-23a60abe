@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.recalculate_xp_with_achievement_bonus(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.recalculate_xp_with_achievement_bonus(uuid) TO service_role;
