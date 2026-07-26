@@ -662,9 +662,29 @@ export type Database = {
           created_at: string
           custom_skill_id: string | null
           description: string | null
+          difficulty: Database["public"]["Enums"]["task_difficulty"]
+          difficulty_locked: boolean
           due_date: string | null
+          due_time: string | null
+          estimated_min: number | null
+          failed_at: string | null
           id: string
+          is_template: boolean
+          last_generated_date: string | null
+          penalty_enabled: boolean
+          penalty_xp: number
+          priority: Database["public"]["Enums"]["task_priority"]
+          reminder_minutes: number | null
+          repeat_interval: number
+          repeat_kind: Database["public"]["Enums"]["task_repeat"]
+          repeat_rule: Database["public"]["Enums"]["task_repeat_rule"] | null
+          repeat_until: string | null
+          repeat_weekdays: number[] | null
           skill_category: Database["public"]["Enums"]["skill_category"] | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          template_id: string | null
+          time_spent_min: number | null
           title: string
           user_id: string
           xp_awarded: boolean
@@ -678,9 +698,29 @@ export type Database = {
           created_at?: string
           custom_skill_id?: string | null
           description?: string | null
+          difficulty?: Database["public"]["Enums"]["task_difficulty"]
+          difficulty_locked?: boolean
           due_date?: string | null
+          due_time?: string | null
+          estimated_min?: number | null
+          failed_at?: string | null
           id?: string
+          is_template?: boolean
+          last_generated_date?: string | null
+          penalty_enabled?: boolean
+          penalty_xp?: number
+          priority?: Database["public"]["Enums"]["task_priority"]
+          reminder_minutes?: number | null
+          repeat_interval?: number
+          repeat_kind?: Database["public"]["Enums"]["task_repeat"]
+          repeat_rule?: Database["public"]["Enums"]["task_repeat_rule"] | null
+          repeat_until?: string | null
+          repeat_weekdays?: number[] | null
           skill_category?: Database["public"]["Enums"]["skill_category"] | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          template_id?: string | null
+          time_spent_min?: number | null
           title: string
           user_id: string
           xp_awarded?: boolean
@@ -694,9 +734,29 @@ export type Database = {
           created_at?: string
           custom_skill_id?: string | null
           description?: string | null
+          difficulty?: Database["public"]["Enums"]["task_difficulty"]
+          difficulty_locked?: boolean
           due_date?: string | null
+          due_time?: string | null
+          estimated_min?: number | null
+          failed_at?: string | null
           id?: string
+          is_template?: boolean
+          last_generated_date?: string | null
+          penalty_enabled?: boolean
+          penalty_xp?: number
+          priority?: Database["public"]["Enums"]["task_priority"]
+          reminder_minutes?: number | null
+          repeat_interval?: number
+          repeat_kind?: Database["public"]["Enums"]["task_repeat"]
+          repeat_rule?: Database["public"]["Enums"]["task_repeat_rule"] | null
+          repeat_until?: string | null
+          repeat_weekdays?: number[] | null
           skill_category?: Database["public"]["Enums"]["skill_category"] | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          template_id?: string | null
+          time_spent_min?: number | null
           title?: string
           user_id?: string
           xp_awarded?: boolean
@@ -709,6 +769,13 @@ export type Database = {
             columns: ["custom_skill_id"]
             isOneToOne: false
             referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -1024,9 +1091,11 @@ export type Database = {
       }
       complete_habit_today: { Args: { p_habit_id: string }; Returns: undefined }
       equip_title: { Args: { p_key: string }; Returns: undefined }
+      generate_recurring_missions: { Args: never; Returns: number }
       generate_weekly_boss: { Args: { p_user_id?: string }; Returns: string }
       get_activity_heatmap: { Args: { p_year?: number }; Returns: Json }
       get_day_detail: { Args: { p_date: string }; Returns: Json }
+      get_mission_stats: { Args: never; Returns: Json }
       get_user_stats: { Args: never; Returns: Json }
       get_weekly_boss_progress: { Args: never; Returns: Json }
       project_future: { Args: { p_days: number }; Returns: Json }
@@ -1044,6 +1113,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      refresh_mission_states: { Args: never; Returns: number }
       sync_life_state: { Args: never; Returns: Json }
       xp_ledger_for: {
         Args: { p_user: string }
@@ -1099,6 +1169,31 @@ export type Database = {
         | "financas"
         | "habito"
         | "outro"
+      task_difficulty:
+        | "muito_facil"
+        | "facil"
+        | "media"
+        | "dificil"
+        | "epica"
+        | "lendaria"
+      task_priority: "baixa" | "normal" | "alta" | "urgente"
+      task_repeat: "unica" | "diaria" | "semanal" | "mensal" | "personalizada"
+      task_repeat_rule:
+        | "every_day"
+        | "weekdays"
+        | "weekends"
+        | "specific_days"
+        | "every_x_days"
+        | "every_x_weeks"
+        | "every_x_months"
+        | "custom_date"
+      task_status:
+        | "pendente"
+        | "em_andamento"
+        | "concluida"
+        | "falhada"
+        | "atrasada"
+        | "cancelada"
       transaction_kind: "receita" | "despesa"
     }
     CompositeTypes: {
@@ -1271,6 +1366,34 @@ export const Constants = {
         "financas",
         "habito",
         "outro",
+      ],
+      task_difficulty: [
+        "muito_facil",
+        "facil",
+        "media",
+        "dificil",
+        "epica",
+        "lendaria",
+      ],
+      task_priority: ["baixa", "normal", "alta", "urgente"],
+      task_repeat: ["unica", "diaria", "semanal", "mensal", "personalizada"],
+      task_repeat_rule: [
+        "every_day",
+        "weekdays",
+        "weekends",
+        "specific_days",
+        "every_x_days",
+        "every_x_weeks",
+        "every_x_months",
+        "custom_date",
+      ],
+      task_status: [
+        "pendente",
+        "em_andamento",
+        "concluida",
+        "falhada",
+        "atrasada",
+        "cancelada",
       ],
       transaction_kind: ["receita", "despesa"],
     },
