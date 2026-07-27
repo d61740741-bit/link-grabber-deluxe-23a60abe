@@ -420,14 +420,18 @@ export type Database = {
           author: string | null
           category: Database["public"]["Enums"]["library_category"]
           completed: boolean
+          completed_at: string | null
           cover_url: string | null
           created_at: string
           current_page: number | null
+          description: string | null
           favorite: boolean
           id: string
           item_type: Database["public"]["Enums"]["library_item_type"]
           notes: string | null
           progress: number
+          status: Database["public"]["Enums"]["library_status"]
+          study_seconds: number
           title: string
           total_pages: number | null
           updated_at: string
@@ -438,14 +442,18 @@ export type Database = {
           author?: string | null
           category: Database["public"]["Enums"]["library_category"]
           completed?: boolean
+          completed_at?: string | null
           cover_url?: string | null
           created_at?: string
           current_page?: number | null
+          description?: string | null
           favorite?: boolean
           id?: string
           item_type?: Database["public"]["Enums"]["library_item_type"]
           notes?: string | null
           progress?: number
+          status?: Database["public"]["Enums"]["library_status"]
+          study_seconds?: number
           title: string
           total_pages?: number | null
           updated_at?: string
@@ -456,14 +464,18 @@ export type Database = {
           author?: string | null
           category?: Database["public"]["Enums"]["library_category"]
           completed?: boolean
+          completed_at?: string | null
           cover_url?: string | null
           created_at?: string
           current_page?: number | null
+          description?: string | null
           favorite?: boolean
           id?: string
           item_type?: Database["public"]["Enums"]["library_item_type"]
           notes?: string | null
           progress?: number
+          status?: Database["public"]["Enums"]["library_status"]
+          study_seconds?: number
           title?: string
           total_pages?: number | null
           updated_at?: string
@@ -1152,7 +1164,12 @@ export type Database = {
         | "exercicio"
         | "sobrevivencia"
         | "primeiros_socorros"
-      library_item_type: "artigo" | "livro"
+        | "fitness"
+        | "idiomas"
+        | "marketing"
+        | "desenvolvimento_pessoal"
+      library_item_type: "artigo" | "livro" | "curso" | "video" | "link" | "pdf"
+      library_status: "em_andamento" | "concluido" | "pausado"
       skill_category:
         | "mente"
         | "corpo"
@@ -1347,8 +1364,13 @@ export const Constants = {
         "exercicio",
         "sobrevivencia",
         "primeiros_socorros",
+        "fitness",
+        "idiomas",
+        "marketing",
+        "desenvolvimento_pessoal",
       ],
-      library_item_type: ["artigo", "livro"],
+      library_item_type: ["artigo", "livro", "curso", "video", "link", "pdf"],
+      library_status: ["em_andamento", "concluido", "pausado"],
       skill_category: [
         "mente",
         "corpo",
