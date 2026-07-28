@@ -10,6 +10,7 @@ import { useMemo } from "react";
 import { StatsSheetsProvider, useStatsSheet } from "@/components/dashboard/StatsSheets";
 import { LifeScoreCard } from "@/components/dashboard/LifeScoreCard";
 import { BossCard } from "@/components/dashboard/BossCard";
+import { HealthCard } from "@/components/dashboard/HealthCard";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -196,6 +197,7 @@ function Dashboard() {
       </section>
 
       <LifeScoreCard />
+      <HealthCard />
       <BossCard />
       <RecoveryCard />
 
