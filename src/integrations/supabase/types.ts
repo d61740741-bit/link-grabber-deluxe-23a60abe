@@ -304,6 +304,33 @@ export type Database = {
         }
         Relationships: []
       }
+      health_goals: {
+        Row: {
+          created_at: string
+          sleep_hours_goal: number
+          updated_at: string
+          user_id: string
+          water_ml_goal: number
+          weight_goal_kg: number | null
+        }
+        Insert: {
+          created_at?: string
+          sleep_hours_goal?: number
+          updated_at?: string
+          user_id: string
+          water_ml_goal?: number
+          weight_goal_kg?: number | null
+        }
+        Update: {
+          created_at?: string
+          sleep_hours_goal?: number
+          updated_at?: string
+          user_id?: string
+          water_ml_goal?: number
+          weight_goal_kg?: number | null
+        }
+        Relationships: []
+      }
       health_logs: {
         Row: {
           calories: number | null
@@ -312,6 +339,7 @@ export type Database = {
           log_date: string
           mood: number | null
           sleep_hours: number | null
+          sleep_quality: number | null
           user_id: string
           water_ml: number | null
           weight_kg: number | null
@@ -323,6 +351,7 @@ export type Database = {
           log_date?: string
           mood?: number | null
           sleep_hours?: number | null
+          sleep_quality?: number | null
           user_id: string
           water_ml?: number | null
           weight_kg?: number | null
@@ -334,6 +363,7 @@ export type Database = {
           log_date?: string
           mood?: number | null
           sleep_hours?: number | null
+          sleep_quality?: number | null
           user_id?: string
           water_ml?: number | null
           weight_kg?: number | null
