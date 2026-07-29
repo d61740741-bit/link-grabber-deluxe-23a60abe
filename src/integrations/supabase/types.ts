@@ -142,35 +142,158 @@ export type Database = {
         }
         Relationships: []
       }
-      finance_transactions: {
+      finance_goals: {
         Row: {
+          color: string
+          completed: boolean
+          created_at: string
+          current_amount: number
+          deadline: string | null
+          icon: string
+          id: string
+          name: string
+          target_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          completed?: boolean
+          created_at?: string
+          current_amount?: number
+          deadline?: string | null
+          icon?: string
+          id?: string
+          name: string
+          target_amount: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          completed?: boolean
+          created_at?: string
+          current_amount?: number
+          deadline?: string | null
+          icon?: string
+          id?: string
+          name?: string
+          target_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      finance_recurrences: {
+        Row: {
+          account: string | null
+          active: boolean
           amount: number
           category: string | null
           created_at: string
           description: string | null
+          frequency: string
           id: string
+          interval_n: number
           kind: Database["public"]["Enums"]["transaction_kind"]
-          occurred_on: string
+          last_generated_date: string | null
+          start_date: string
+          to_account: string | null
+          until_date: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
+          account?: string | null
+          active?: boolean
           amount: number
           category?: string | null
           created_at?: string
           description?: string | null
+          frequency?: string
           id?: string
+          interval_n?: number
           kind: Database["public"]["Enums"]["transaction_kind"]
-          occurred_on?: string
+          last_generated_date?: string | null
+          start_date?: string
+          to_account?: string | null
+          until_date?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
+          account?: string | null
+          active?: boolean
           amount?: number
           category?: string | null
           created_at?: string
           description?: string | null
+          frequency?: string
           id?: string
+          interval_n?: number
           kind?: Database["public"]["Enums"]["transaction_kind"]
+          last_generated_date?: string | null
+          start_date?: string
+          to_account?: string | null
+          until_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      finance_transactions: {
+        Row: {
+          account: string | null
+          amount: number
+          category: string | null
+          created_at: string
+          description: string | null
+          group_id: string | null
+          id: string
+          installment_no: number | null
+          installment_total: number | null
+          kind: Database["public"]["Enums"]["transaction_kind"]
+          notes: string | null
+          occurred_on: string
+          recurrence_id: string | null
+          to_account: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account?: string | null
+          amount: number
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          group_id?: string | null
+          id?: string
+          installment_no?: number | null
+          installment_total?: number | null
+          kind: Database["public"]["Enums"]["transaction_kind"]
+          notes?: string | null
           occurred_on?: string
+          recurrence_id?: string | null
+          to_account?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account?: string | null
+          amount?: number
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          group_id?: string | null
+          id?: string
+          installment_no?: number | null
+          installment_total?: number | null
+          kind?: Database["public"]["Enums"]["transaction_kind"]
+          notes?: string | null
+          occurred_on?: string
+          recurrence_id?: string | null
+          to_account?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1133,6 +1256,7 @@ export type Database = {
       }
       complete_habit_today: { Args: { p_habit_id: string }; Returns: undefined }
       equip_title: { Args: { p_key: string }; Returns: undefined }
+      generate_recurring_finance: { Args: never; Returns: number }
       generate_recurring_missions: { Args: never; Returns: number }
       generate_weekly_boss: { Args: { p_user_id?: string }; Returns: string }
       get_activity_heatmap: { Args: { p_year?: number }; Returns: Json }
@@ -1241,7 +1365,7 @@ export type Database = {
         | "falhada"
         | "atrasada"
         | "cancelada"
-      transaction_kind: "receita" | "despesa"
+      transaction_kind: "receita" | "despesa" | "transferencia"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1447,7 +1571,7 @@ export const Constants = {
         "atrasada",
         "cancelada",
       ],
-      transaction_kind: ["receita", "despesa"],
+      transaction_kind: ["receita", "despesa", "transferencia"],
     },
   },
 } as const
