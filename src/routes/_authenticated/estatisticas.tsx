@@ -8,7 +8,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, Legend,
 } from "recharts";
 import { skillLabels } from "@/lib/ascension";
-import { isCardio, useLiveData } from "@/lib/dashboard";
+import { isCardio, useDashboardRealtime } from "@/lib/dashboard";
 import {
   Zap, Flame, Target, Dumbbell, BookOpen, Smile, Wallet, TrendingUp, Award,
   Droplets, Moon, Scale, HeartPulse, Shield, Library, CalendarDays, Activity,
@@ -60,7 +60,7 @@ const fmtMonth = (k: string) => `${MONTHS[Number(k.slice(5, 7)) - 1]}/${k.slice(
 function Stats() {
   const [range, setRange] = useState<RangeKey>("month");
   const cfg = RANGES.find((r) => r.key === range)!;
-  useLiveData?.();
+  useDashboardRealtime();
 
   const since = useMemo(() => {
     const d = new Date();
