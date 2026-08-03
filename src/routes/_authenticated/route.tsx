@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect, Link, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, Target, TrendingUp, BookOpen, User } from "lucide-react";
+import { Home, Target, TrendingUp, BookOpen, Sparkles, User } from "lucide-react";
 import { AchievementUnlockOverlay } from "@/components/AchievementUnlockOverlay";
 import { useTitleUnlockWatcher } from "@/lib/life-state";
 
@@ -20,6 +20,7 @@ const tabs = [
   { to: "/missoes", label: "Missões", icon: Target },
   { to: "/habilidades", label: "Evolução", icon: TrendingUp },
   { to: "/diario", label: "Diário", icon: BookOpen },
+  { to: "/sistema", label: "Sistema", icon: Sparkles },
   { to: "/perfil", label: "Perfil", icon: User },
 ] as const;
 

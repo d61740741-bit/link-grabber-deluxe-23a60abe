@@ -142,6 +142,48 @@ export type Database = {
         }
         Relationships: []
       }
+      character_classes: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string
+          key: string
+          name: string
+          perks: Json
+          primary_attr: string
+          requirements: Json
+          secondary_attr: string | null
+          sort_order: number
+          tagline: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon: string
+          key: string
+          name: string
+          perks?: Json
+          primary_attr: string
+          requirements?: Json
+          secondary_attr?: string | null
+          sort_order?: number
+          tagline: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string
+          key?: string
+          name?: string
+          perks?: Json
+          primary_attr?: string
+          requirements?: Json
+          secondary_attr?: string | null
+          sort_order?: number
+          tagline?: string
+        }
+        Relationships: []
+      }
       finance_goals: {
         Row: {
           color: string
@@ -669,6 +711,8 @@ export type Database = {
           avatar_frame: string | null
           avatar_url: string | null
           bio: string | null
+          class_chosen_at: string | null
+          class_key: string | null
           created_at: string
           current_rank: string | null
           equipped_title: string | null
@@ -690,6 +734,8 @@ export type Database = {
           avatar_frame?: string | null
           avatar_url?: string | null
           bio?: string | null
+          class_chosen_at?: string | null
+          class_key?: string | null
           created_at?: string
           current_rank?: string | null
           equipped_title?: string | null
@@ -711,6 +757,8 @@ export type Database = {
           avatar_frame?: string | null
           avatar_url?: string | null
           bio?: string | null
+          class_chosen_at?: string | null
+          class_key?: string | null
           created_at?: string
           current_rank?: string | null
           equipped_title?: string | null
@@ -774,6 +822,83 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bad_habits"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_items: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          icon: string
+          key: string
+          kind: Database["public"]["Enums"]["item_kind"]
+          metadata: Json
+          name: string
+          price: number
+          rarity: Database["public"]["Enums"]["item_rarity"]
+          required_level: number
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          icon?: string
+          key: string
+          kind?: Database["public"]["Enums"]["item_kind"]
+          metadata?: Json
+          name: string
+          price: number
+          rarity?: Database["public"]["Enums"]["item_rarity"]
+          required_level?: number
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          icon?: string
+          key?: string
+          kind?: Database["public"]["Enums"]["item_kind"]
+          metadata?: Json
+          name?: string
+          price?: number
+          rarity?: Database["public"]["Enums"]["item_rarity"]
+          required_level?: number
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      shop_purchases: {
+        Row: {
+          created_at: string
+          id: string
+          item_key: string
+          price: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_key: string
+          price: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_key?: string
+          price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_purchases_item_key_fkey"
+            columns: ["item_key"]
+            isOneToOne: false
+            referencedRelation: "shop_items"
+            referencedColumns: ["key"]
           },
         ]
       }
@@ -1250,6 +1375,7 @@ export type Database = {
         Returns: undefined
       }
       bad_habit_sync_awards: { Args: never; Returns: undefined }
+      buy_shop_item: { Args: { p_item_key: string }; Returns: Json }
       calc_life_score: { Args: { p_user_id?: string }; Returns: number }
       check_all_titles: { Args: { p_user_id?: string }; Returns: number }
       check_rank: { Args: { p_user_id?: string }; Returns: string }
@@ -1263,6 +1389,9 @@ export type Database = {
       generate_recurring_missions: { Args: never; Returns: number }
       generate_weekly_boss: { Args: { p_user_id?: string }; Returns: string }
       get_activity_heatmap: { Args: { p_year?: number }; Returns: Json }
+      get_character_attributes: { Args: { p_user?: string }; Returns: Json }
+      get_character_state: { Args: never; Returns: Json }
+      get_coin_balance: { Args: { p_user?: string }; Returns: Json }
       get_day_detail: { Args: { p_date: string }; Returns: Json }
       get_mission_stats: { Args: never; Returns: Json }
       get_user_stats: { Args: never; Returns: Json }
@@ -1283,6 +1412,7 @@ export type Database = {
         Returns: undefined
       }
       refresh_mission_states: { Args: never; Returns: number }
+      set_character_class: { Args: { p_key: string }; Returns: Json }
       sync_life_state: { Args: never; Returns: Json }
       xp_ledger_for: {
         Args: { p_user: string }

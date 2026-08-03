@@ -16,6 +16,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedTreinosRouteImport } from './routes/_authenticated/treinos'
 import { Route as AuthenticatedTitulosRouteImport } from './routes/_authenticated/titulos'
+import { Route as AuthenticatedSistemaRouteImport } from './routes/_authenticated/sistema'
 import { Route as AuthenticatedSaudeRouteImport } from './routes/_authenticated/saude'
 import { Route as AuthenticatedRecuperacaoRouteImport } from './routes/_authenticated/recuperacao'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
@@ -66,6 +67,11 @@ const AuthenticatedTreinosRoute = AuthenticatedTreinosRouteImport.update({
 const AuthenticatedTitulosRoute = AuthenticatedTitulosRouteImport.update({
   id: '/titulos',
   path: '/titulos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSistemaRoute = AuthenticatedSistemaRouteImport.update({
+  id: '/sistema',
+  path: '/sistema',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSaudeRoute = AuthenticatedSaudeRouteImport.update({
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/perfil': typeof AuthenticatedPerfilRoute
   '/recuperacao': typeof AuthenticatedRecuperacaoRoute
   '/saude': typeof AuthenticatedSaudeRoute
+  '/sistema': typeof AuthenticatedSistemaRoute
   '/titulos': typeof AuthenticatedTitulosRoute
   '/treinos': typeof AuthenticatedTreinosRoute
   '/habilidades/$id': typeof AuthenticatedHabilidadesIdRoute
@@ -204,6 +211,7 @@ export interface FileRoutesByTo {
   '/perfil': typeof AuthenticatedPerfilRoute
   '/recuperacao': typeof AuthenticatedRecuperacaoRoute
   '/saude': typeof AuthenticatedSaudeRoute
+  '/sistema': typeof AuthenticatedSistemaRoute
   '/titulos': typeof AuthenticatedTitulosRoute
   '/treinos': typeof AuthenticatedTreinosRoute
   '/habilidades/$id': typeof AuthenticatedHabilidadesIdRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/recuperacao': typeof AuthenticatedRecuperacaoRoute
   '/_authenticated/saude': typeof AuthenticatedSaudeRoute
+  '/_authenticated/sistema': typeof AuthenticatedSistemaRoute
   '/_authenticated/titulos': typeof AuthenticatedTitulosRoute
   '/_authenticated/treinos': typeof AuthenticatedTreinosRoute
   '/_authenticated/habilidades/$id': typeof AuthenticatedHabilidadesIdRoute
@@ -258,6 +267,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/recuperacao'
     | '/saude'
+    | '/sistema'
     | '/titulos'
     | '/treinos'
     | '/habilidades/$id'
@@ -283,6 +293,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/recuperacao'
     | '/saude'
+    | '/sistema'
     | '/titulos'
     | '/treinos'
     | '/habilidades/$id'
@@ -309,6 +320,7 @@ export interface FileRouteTypes {
     | '/_authenticated/perfil'
     | '/_authenticated/recuperacao'
     | '/_authenticated/saude'
+    | '/_authenticated/sistema'
     | '/_authenticated/titulos'
     | '/_authenticated/treinos'
     | '/_authenticated/habilidades/$id'
@@ -372,6 +384,13 @@ declare module '@tanstack/react-router' {
       path: '/titulos'
       fullPath: '/titulos'
       preLoaderRoute: typeof AuthenticatedTitulosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sistema': {
+      id: '/_authenticated/sistema'
+      path: '/sistema'
+      fullPath: '/sistema'
+      preLoaderRoute: typeof AuthenticatedSistemaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/saude': {
@@ -512,6 +531,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedRecuperacaoRoute: typeof AuthenticatedRecuperacaoRoute
   AuthenticatedSaudeRoute: typeof AuthenticatedSaudeRoute
+  AuthenticatedSistemaRoute: typeof AuthenticatedSistemaRoute
   AuthenticatedTitulosRoute: typeof AuthenticatedTitulosRoute
   AuthenticatedTreinosRoute: typeof AuthenticatedTreinosRoute
   AuthenticatedHabilidadesIdRoute: typeof AuthenticatedHabilidadesIdRoute
@@ -534,6 +554,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedRecuperacaoRoute: AuthenticatedRecuperacaoRoute,
   AuthenticatedSaudeRoute: AuthenticatedSaudeRoute,
+  AuthenticatedSistemaRoute: AuthenticatedSistemaRoute,
   AuthenticatedTitulosRoute: AuthenticatedTitulosRoute,
   AuthenticatedTreinosRoute: AuthenticatedTreinosRoute,
   AuthenticatedHabilidadesIdRoute: AuthenticatedHabilidadesIdRoute,
