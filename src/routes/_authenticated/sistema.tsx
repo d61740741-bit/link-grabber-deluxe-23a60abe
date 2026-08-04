@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Sparkles, Gem, Shield, ShoppingBag, Swords, Check, Lock, Crown, Flame,
+  Sparkles, Gem, Shield, ShoppingBag, Swords, Check, Lock, Crown,
   Activity, Zap, Trophy, Boxes, History, Coins, Star, Eye, ChevronRight,
 } from "lucide-react";
 import {
@@ -1080,6 +1080,3 @@ function EvolutionSection() {
     </div>
   );
 }
-
-/* helpers usados acima */
-export { Flame };
