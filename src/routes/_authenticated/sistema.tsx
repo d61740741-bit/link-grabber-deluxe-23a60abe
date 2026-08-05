@@ -1218,6 +1218,7 @@ function BossesSection() {
 function AchievementsSection() {
   const { data: achievements } = useAchievementsList();
   const list = achievements ?? [];
+  const [sel, setSel] = useState<(typeof list)[number] | null>(null);
   const byTier = useMemo(() => {
     const map: Record<AchvTier, typeof list> = { comum: [], rara: [], epica: [], lendaria: [], secreta: [] };
     list.forEach((a) => map[achievementTier(a.badge_key)].push(a));
@@ -1257,19 +1258,35 @@ function AchievementsSection() {
             ) : (
               <div className="grid grid-cols-3 gap-2.5">
                 {rows.map((a) => (
-                  <div key={a.id} className={`rounded-2xl p-3 ring-1 ${st.ring} ${st.bg} text-center`}>
+                  <Clickable key={a.id} onClick={() => setSel(a)} className={`rounded-2xl p-3 ring-1 ${st.ring} ${st.bg} text-center`}>
                     <p className="text-xl">{a.icon ?? "🏅"}</p>
                     <p className={`text-[10px] font-semibold mt-1 line-clamp-2 ${st.text}`}>{a.name}</p>
-                  </div>
+                  </Clickable>
                 ))}
               </div>
             )}
           </Panel>
         );
       })}
+
+      <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.name ?? ""} sub={sel?.description ?? undefined} icon={sel?.icon ?? "🏅"}>
+        {sel && (
+          <>
+            <ModalRow label="Raridade" value={TIER_STYLE[achievementTier(sel.badge_key)].label} tone={TIER_STYLE[achievementTier(sel.badge_key)].text} />
+            <ModalRow label="Desbloqueada em" value={new Date(sel.unlocked_at).toLocaleString("pt-BR")} />
+            <ModalRow label="Fragmentos gerados" value="+25" tone="text-amber-300" />
+            <ModalBlock title="Origem">
+              <p className="text-[12px] text-muted-foreground">
+                Registro <span className="text-foreground/80">{sel.badge_key}</span> emitido automaticamente pelo Sistema ao detectar o marco correspondente na sua evolução real.
+              </p>
+            </ModalBlock>
+          </>
+        )}
+      </SysModal>
     </div>
   );
 }
+
 
 /* ───────── 13. Histórico de Evolução ───────── */
 
