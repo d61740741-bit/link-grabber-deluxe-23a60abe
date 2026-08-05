@@ -924,8 +924,8 @@ function PassivesSection({ state }: { state: S }) {
             </Clickable>
           ))}
         </div>
-      </Clickable-placeholder>
       </Panel>
+
 
       <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.unlocked || !sel?.secret ? (sel?.name ?? "") : "?????"} sub={sel?.unlocked ? "Passiva ativa" : "Selo não revelado"} icon={sel?.secret && !sel?.unlocked ? "❔" : sel?.icon}>
         {sel && (
