@@ -17,6 +17,9 @@ import {
   monthlyBoss, achievementTier, TIER_STYLE, INV_CATEGORIES, inventoryCategory, isRelic,
   type AchvTier,
 } from "@/lib/system";
+import { useLifeScoreHistory } from "@/lib/life-state";
+import { useXpHistory, usePurchases, xpBuckets, xpSeries, xpBySource, useEquipTitle } from "@/lib/system-data";
+import { SysModal, Clickable, ModalRow, ModalBlock, Spark, PurchaseFlow, BoxOpening } from "@/components/sistema/system-ui";
 
 export const Route = createFileRoute("/_authenticated/sistema")({
   component: SistemaPage,
@@ -188,94 +191,341 @@ function Overview({ state }: { state: S }) {
   const lv = levelXp(xp, level);
   const { data: boss } = useWeeklyBoss();
   const { data: timeline } = useTimeline(1);
+  const { data: xpRows } = useXpHistory();
+  const { data: purchases } = usePurchases();
+  const { data: scoreHist } = useLifeScoreHistory(30);
+  const { data: titles } = useTitles();
   const rank = RANKS.find((r) => r.id === (p?.current_rank ?? "beginner")) ?? RANKS[0];
   const coins = state?.coins?.balance ?? 0;
+  const [modal, setModal] = useState<string | null>(null);
+  const close = () => setModal(null);
+
+  const buckets = xpBuckets(xpRows ?? []);
+  const series = xpSeries(xpRows ?? [], 14);
+  const sources = xpBySource(xpRows ?? []).slice(0, 6);
+  const currentTitle = (titles ?? []).find((t) => t.title_key === p?.equipped_title) ?? null;
+  const scores = (scoreHist ?? []) as { snapshot_date: string; score: number }[];
+  const scoreSeries = scores.map((s) => ({
+    label: new Date(s.snapshot_date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+    value: Number(s.score),
+  }));
 
   return (
     <div className="space-y-3">
-      <Panel className={`relative overflow-hidden ring-1 ${rank.ring} bg-gradient-to-br ${rank.tone}`}>
-        <Particles />
-        <div className="relative flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Nível</p>
-            <p className="text-4xl font-semibold tracking-tight leading-none">{level}</p>
-            <p className="text-[11px] text-muted-foreground mt-1">{xp.toLocaleString("pt-BR")} XP acumulado</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Moedas do Sistema</p>
-            <p className="text-2xl font-semibold text-amber-300 flex items-center gap-1.5 justify-end">
-              <Coins className="h-4 w-4" /> {coins.toLocaleString("pt-BR")}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1 justify-end">
-              <Gem className="h-3 w-3" /> {(state?.coins?.earned ?? 0).toLocaleString("pt-BR")} fragmentos
-            </p>
-          </div>
-        </div>
-        <div className="relative mt-3">
-          <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-            <span>Progresso do nível</span>
-            <span>faltam {lv.remaining.toLocaleString("pt-BR")} XP</span>
-          </div>
-          <Bar pct={lv.pct} className="bg-gradient-to-r from-electric to-primary" />
-        </div>
-      </Panel>
-
-      <div className="grid grid-cols-2 gap-2.5">
-        <Tile icon={rank.icon} label="Rank" value={rank.name} />
-        <Tile icon={state?.class?.icon ?? "❔"} label="Classe" value={state?.class?.name ?? "Sem classe"} />
-        <Tile icon="👑" label="Título" value={p?.equipped_title ? p.equipped_title.replace(/_/g, " ") : "—"} />
-        <Tile icon="💠" label="Life Score" value={String(p?.life_score ?? 0)} />
-        <Tile icon="🔥" label="Sequência" value={`${p?.streak_days ?? 0} dias`} />
-        <Tile icon="🏅" label="Conquistas" value={String(state?.achievements ?? 0)} />
-      </div>
-
-      <Panel>
-        <SectionTitle icon="👹" title="Boss ativo" />
-        {boss ? (
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{boss.icon}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold">{boss.name}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {boss.objectives.filter((o) => o.current >= o.target).length}/{boss.objectives.length} objetivos · +{boss.xp_reward} XP
+      <Clickable onClick={() => setModal("nivel")}>
+        <Panel className={`relative overflow-hidden ring-1 ${rank.ring} bg-gradient-to-br ${rank.tone}`}>
+          <Particles />
+          <div className="relative flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Nível</p>
+              <p className="text-4xl font-semibold tracking-tight leading-none">{level}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">{xp.toLocaleString("pt-BR")} XP acumulado</p>
+            </div>
+            <div className="text-right" onClick={(e) => { e.stopPropagation(); setModal("moedas"); }}>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Moedas do Sistema</p>
+              <p className="text-2xl font-semibold text-amber-300 flex items-center gap-1.5 justify-end">
+                <Coins className="h-4 w-4" /> {coins.toLocaleString("pt-BR")}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1 justify-end">
+                <Gem className="h-3 w-3" /> {(state?.coins?.earned ?? 0).toLocaleString("pt-BR")} fragmentos
               </p>
             </div>
-            <span className={`text-[10px] px-2 py-1 rounded-full ring-hair ${boss.status === "completed" ? "text-emerald-300 bg-emerald-500/10" : "text-amber-300 bg-amber-500/10"}`}>
-              {boss.status === "completed" ? "Vencido" : "Ativo"}
-            </span>
           </div>
-        ) : (
-          <Hidden />
-        )}
-      </Panel>
-
-      <Panel>
-        <SectionTitle icon="🎁" title="Última recompensa" />
-        {timeline?.[0] ? (
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{timeline[0].icon}</span>
-            <div className="min-w-0">
-              <p className="text-[13px] font-semibold truncate">{timeline[0].title}</p>
-              <p className="text-[11px] text-muted-foreground truncate">{timeline[0].description}</p>
+          <div className="relative mt-3">
+            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+              <span>Progresso do nível</span>
+              <span>faltam {lv.remaining.toLocaleString("pt-BR")} XP</span>
             </div>
+            <Bar pct={lv.pct} className="bg-gradient-to-r from-electric to-primary" />
           </div>
-        ) : (
-          <Hidden label="nenhuma recompensa registrada" />
+        </Panel>
+      </Clickable>
+
+      <div className="grid grid-cols-2 gap-2.5">
+        <Tile icon={rank.icon} label="Rank" value={rank.name} onClick={() => setModal("rank")} />
+        <Tile icon={state?.class?.icon ?? "❔"} label="Classe" value={state?.class?.name ?? "Sem classe"} onClick={() => setModal("classe")} />
+        <Tile icon="👑" label="Título" value={p?.equipped_title ? p.equipped_title.replace(/_/g, " ") : "—"} onClick={() => setModal("titulo")} />
+        <Tile icon="💠" label="Life Score" value={String(p?.life_score ?? 0)} onClick={() => setModal("score")} />
+        <Tile icon="🔥" label="Sequência" value={`${p?.streak_days ?? 0} dias`} onClick={() => setModal("streak")} />
+        <Tile icon="🏅" label="Conquistas" value={String(state?.achievements ?? 0)} onClick={() => setModal("conquistas")} />
+      </div>
+
+      <Clickable onClick={() => setModal("boss")}>
+        <Panel>
+          <SectionTitle icon="👹" title="Boss ativo" />
+          {boss ? (
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{boss.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold">{boss.name}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {boss.objectives.filter((o) => o.current >= o.target).length}/{boss.objectives.length} objetivos · +{boss.xp_reward} XP
+                </p>
+              </div>
+              <span className={`text-[10px] px-2 py-1 rounded-full ring-hair ${boss.status === "completed" ? "text-emerald-300 bg-emerald-500/10" : "text-amber-300 bg-amber-500/10"}`}>
+                {boss.status === "completed" ? "Vencido" : "Ativo"}
+              </span>
+            </div>
+          ) : (
+            <Hidden />
+          )}
+        </Panel>
+      </Clickable>
+
+      <Clickable onClick={() => setModal("recompensa")}>
+        <Panel>
+          <SectionTitle icon="🎁" title="Última recompensa" />
+          {timeline?.[0] ? (
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{timeline[0].icon}</span>
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold truncate">{timeline[0].title}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{timeline[0].description}</p>
+              </div>
+            </div>
+          ) : (
+            <Hidden label="nenhuma recompensa registrada" />
+          )}
+        </Panel>
+      </Clickable>
+
+      {/* ── telas detalhadas ── */}
+
+      <SysModal open={modal === "nivel"} onClose={close} title={`Nível ${level}`} sub="Linha de evolução e recompensas" icon="⭐">
+        <div className="grid grid-cols-2 gap-2">
+          <ModalRow label="XP atual" value={lv.done.toLocaleString("pt-BR")} />
+          <ModalRow label="XP total" value={xp.toLocaleString("pt-BR")} />
+          <ModalRow label="Hoje" value={`+${buckets.today}`} tone="text-emerald-300" />
+          <ModalRow label="Semana" value={`+${buckets.week}`} tone="text-emerald-300" />
+          <ModalRow label="Mês" value={`+${buckets.month}`} tone="text-emerald-300" />
+          <ModalRow label="Falta" value={`${lv.remaining.toLocaleString("pt-BR")} XP`} />
+        </div>
+        <ModalBlock title="XP dos últimos 14 dias">
+          <Spark data={series} className="bg-gradient-to-t from-electric/40 to-electric" />
+        </ModalBlock>
+        <ModalBlock title="Origem do XP">
+          <div className="space-y-1.5">
+            {sources.length === 0 ? <Hidden label="sem registros" /> : sources.map((s) => (
+              <div key={s.source}>
+                <div className="flex justify-between text-[11px] mb-1">
+                  <span className="capitalize">{s.source.replace(/_/g, " ")}</span>
+                  <span className="text-muted-foreground">+{s.amount}</span>
+                </div>
+                <Bar pct={(s.amount / Math.max(1, sources[0].amount)) * 100} />
+              </div>
+            ))}
+          </div>
+        </ModalBlock>
+        <ModalBlock title="Próximos níveis e recompensas">
+          <div className="space-y-2">
+            {[0, 1, 2, 3, 4].map((k) => {
+              const l = level + k;
+              const need = 50 * l * l;
+              const reached = k === 0;
+              return (
+                <div key={l} className={`rounded-2xl p-3 ring-hair flex items-center gap-3 ${reached ? "bg-electric/10" : "bg-white/[0.03]"}`}>
+                  <span className="text-lg">{reached ? "⭐" : "🔒"}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-semibold">Nível {l}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {need.toLocaleString("pt-BR")} XP · +{l * 25} fragmentos {l % 5 === 0 ? "· nova moldura" : ""} {l % 10 === 0 ? "· título exclusivo" : ""}
+                    </p>
+                  </div>
+                  {reached && <Check className="h-4 w-4 text-emerald-300" />}
+                </div>
+              );
+            })}
+          </div>
+        </ModalBlock>
+      </SysModal>
+
+      <SysModal open={modal === "moedas"} onClose={close} title="Moedas do Sistema" sub="Fragmentos derivados da sua evolução" icon="🪙">
+        <div className="grid grid-cols-3 gap-2">
+          <ModalRow label="Saldo" value={coins.toLocaleString("pt-BR")} tone="text-amber-300" />
+          <ModalRow label="Ganhos" value={(state?.coins?.earned ?? 0).toLocaleString("pt-BR")} tone="text-emerald-300" />
+          <ModalRow label="Gastos" value={(state?.coins?.spent ?? 0).toLocaleString("pt-BR")} tone="text-rose-300" />
+        </div>
+        <ModalBlock title="Origem dos fragmentos">
+          <ul className="text-[12px] text-muted-foreground space-y-1.5">
+            <li>⚡ XP total acumulado</li>
+            <li>🏅 Conquistas desbloqueadas</li>
+            <li>👹 Bosses derrotados</li>
+            <li>👑 Títulos obtidos</li>
+          </ul>
+        </ModalBlock>
+        <ModalBlock title="Histórico de gastos">
+          {(purchases ?? []).length === 0 ? <Hidden label="nenhuma compra registrada" /> : (
+            <div className="space-y-1.5">
+              {(purchases ?? []).slice(0, 12).map((pu) => (
+                <div key={pu.id} className="flex items-center justify-between rounded-2xl bg-white/[0.03] ring-hair px-3 py-2">
+                  <span className="text-[11px] truncate">{pu.item_key.replace(/_/g, " ")}</span>
+                  <span className="text-[11px] text-rose-300">-{pu.price}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </ModalBlock>
+      </SysModal>
+
+      <SysModal open={modal === "score"} onClose={close} title="Life Score" sub="Como o Sistema mede seu equilíbrio" icon="💠">
+        <ModalRow label="Score atual" value={String(p?.life_score ?? 0)} tone="text-electric" />
+        <ModalBlock title="Últimos 30 dias">
+          {scoreSeries.length === 0 ? <Hidden label="sem histórico" /> : <Spark data={scoreSeries} className="bg-gradient-to-t from-emerald-500/40 to-emerald-400" />}
+        </ModalBlock>
+        {scoreSeries.length > 1 && (
+          <div className="grid grid-cols-2 gap-2">
+            <ModalRow label="Semana passada" value={String(Math.round(scoreSeries[Math.max(0, scoreSeries.length - 8)].value))} />
+            <ModalRow
+              label="Variação"
+              value={`${(scoreSeries[scoreSeries.length - 1].value - scoreSeries[Math.max(0, scoreSeries.length - 8)].value).toFixed(1)}`}
+              tone={scoreSeries[scoreSeries.length - 1].value >= scoreSeries[Math.max(0, scoreSeries.length - 8)].value ? "text-emerald-300" : "text-rose-300"}
+            />
+          </div>
         )}
-      </Panel>
+        <ModalBlock title="Como é calculado">
+          <ul className="text-[12px] text-muted-foreground space-y-1.5">
+            <li>🎯 Missões concluídas no período</li>
+            <li>🔥 Consistência de hábitos e sequência</li>
+            <li>💪 Treinos e saúde registrados</li>
+            <li>📚 Estudo e biblioteca</li>
+            <li>💰 Saldo financeiro e metas</li>
+            <li>🧘 Diário e equilíbrio mental</li>
+          </ul>
+        </ModalBlock>
+      </SysModal>
+
+      <SysModal open={modal === "rank"} onClose={close} title={rank.name} sub={rank.tagline} icon={rank.icon}>
+        <ModalBlock title="Todos os ranks">
+          <div className="space-y-2">
+            {RANKS.map((r, i) => {
+              const reached = RANKS.findIndex((x) => x.id === rank.id) >= i;
+              return (
+                <div key={r.id} className={`rounded-2xl p-3 ring-hair flex items-center gap-3 ${reached ? `bg-gradient-to-r ${r.tone}` : "bg-white/[0.03]"}`}>
+                  <span className={`text-xl ${reached ? "" : "grayscale opacity-60"}`}>{r.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-semibold">{r.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">+{(i + 1) * 150} fragmentos · molduras e títulos</p>
+                  </div>
+                  {reached && <Check className="h-4 w-4 text-emerald-300" />}
+                </div>
+              );
+            })}
+          </div>
+        </ModalBlock>
+      </SysModal>
+
+      <SysModal open={modal === "classe"} onClose={close} title={state?.class?.name ?? "Sem classe"} sub={state?.class?.tagline ?? "Evolua atributos para despertar"} icon={state?.class?.icon ?? "❔"}>
+        {state?.class ? (
+          <>
+            <ModalRow label="Atributo principal" value={state.class.primary_attr} />
+            {state.class.secondary_attr && <ModalRow label="Secundário" value={state.class.secondary_attr} />}
+            <ModalBlock title="Passivas da classe">
+              <ul className="space-y-1">
+                {(state.class.perks ?? []).map((pk) => (
+                  <li key={pk} className="text-[12px] text-muted-foreground flex items-center gap-1.5"><Check className="h-3 w-3 text-electric" />{pk}</li>
+                ))}
+              </ul>
+            </ModalBlock>
+            <ModalBlock title="Próxima evolução">
+              <p className="text-[12px] text-muted-foreground">Especialização revelada ao atingir <span className="tracking-[0.2em]">?????</span></p>
+            </ModalBlock>
+          </>
+        ) : (
+          <Hidden label="nenhuma classe desperta" />
+        )}
+      </SysModal>
+
+      <SysModal open={modal === "titulo"} onClose={close} title={currentTitle?.title_name ?? "Sem título"} sub={currentTitle?.description ?? "Conquiste títulos evoluindo"} icon={currentTitle?.icon ?? "👑"}>
+        {currentTitle && (
+          <>
+            <ModalRow label="Raridade" value={currentTitle.rarity} tone={rarityStyle(currentTitle.rarity).text} />
+            <ModalRow label="Conquistado em" value={new Date(currentTitle.earned_at).toLocaleDateString("pt-BR")} />
+          </>
+        )}
+        <ModalBlock title="Coleção de títulos">
+          {(titles ?? []).length === 0 ? <Hidden label="nenhum título ainda" /> : (
+            <div className="space-y-1.5">
+              {(titles ?? []).map((t) => (
+                <div key={t.id} className={`rounded-2xl p-2.5 ring-1 ${rarityStyle(t.rarity).ring} ${rarityStyle(t.rarity).bg} flex items-center gap-2.5`}>
+                  <span className="text-lg">{t.icon}</span>
+                  <p className="text-[12px] font-semibold flex-1 truncate">{t.title_name}</p>
+                  {t.title_key === p?.equipped_title && <Check className="h-3.5 w-3.5 text-emerald-300" />}
+                </div>
+              ))}
+            </div>
+          )}
+        </ModalBlock>
+      </SysModal>
+
+      <SysModal open={modal === "streak"} onClose={close} title={`${p?.streak_days ?? 0} dias de sequência`} sub="Constância registrada pelo Sistema" icon="🔥">
+        <div className="grid grid-cols-2 gap-2">
+          <ModalRow label="Sequência atual" value={`${p?.streak_days ?? 0} dias`} tone="text-orange-300" />
+          <ModalRow label="XP hoje" value={`+${buckets.today}`} tone="text-emerald-300" />
+        </div>
+        <ModalBlock title="Atividade recente">
+          <Spark data={series} className="bg-gradient-to-t from-orange-500/40 to-orange-400" />
+        </ModalBlock>
+        <p className="text-[11px] text-muted-foreground">Registre qualquer ação real no dia para manter a sequência viva.</p>
+      </SysModal>
+
+      <SysModal open={modal === "conquistas"} onClose={close} title={`${state?.achievements ?? 0} conquistas`} sub="Abra a aba Conquistas para o detalhe completo" icon="🏅">
+        <div className="grid grid-cols-2 gap-2">
+          <ModalRow label="Desbloqueadas" value={String(state?.achievements ?? 0)} />
+          <ModalRow label="Títulos" value={String(state?.titles ?? 0)} />
+          <ModalRow label="Missões" value={String(state?.missions ?? 0)} />
+          <ModalRow label="Fragmentos gerados" value={String((state?.achievements ?? 0) * 25)} tone="text-amber-300" />
+        </div>
+      </SysModal>
+
+      <SysModal open={modal === "boss"} onClose={close} title={boss?.name ?? "Nenhum boss ativo"} sub={boss?.description ?? "Revelado no início da semana"} icon={boss?.icon ?? "👹"}>
+        {boss ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <ModalRow label="Recompensa" value={`+${boss.xp_reward} XP`} tone="text-amber-300" />
+              <ModalRow label="Status" value={boss.status === "completed" ? "Derrotado" : "Ativo"} />
+            </div>
+            <ModalBlock title="Objetivos">
+              <div className="space-y-2">
+                {boss.objectives.map((o) => (
+                  <div key={o.key}>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span>{o.label}</span>
+                      <span className="text-muted-foreground">{o.current}/{o.target}</span>
+                    </div>
+                    <Bar pct={(o.current / Math.max(1, o.target)) * 100} className={o.current >= o.target ? "bg-emerald-400" : "bg-electric"} />
+                  </div>
+                ))}
+              </div>
+            </ModalBlock>
+          </>
+        ) : <Hidden />}
+      </SysModal>
+
+      <SysModal open={modal === "recompensa"} onClose={close} title={timeline?.[0]?.title ?? "Sem recompensas"} sub={timeline?.[0]?.description ?? undefined} icon={timeline?.[0]?.icon ?? "🎁"}>
+        {timeline?.[0] ? (
+          <>
+            <ModalRow label="Categoria" value={timeline[0].category} />
+            <ModalRow label="Data" value={new Date(timeline[0].occurred_at).toLocaleString("pt-BR")} />
+            <ModalBlock title="Registro do Sistema">
+              <pre className="text-[10px] text-muted-foreground whitespace-pre-wrap break-all">{JSON.stringify(timeline[0].metadata ?? {}, null, 1)}</pre>
+            </ModalBlock>
+          </>
+        ) : <Hidden />}
+      </SysModal>
     </div>
   );
 }
 
-function Tile({ icon, label, value }: { icon: string; label: string; value: string }) {
+function Tile({ icon, label, value, onClick }: { icon: string; label: string; value: string; onClick?: () => void }) {
   return (
-    <div className="glass rounded-2xl p-3.5">
+    <Clickable onClick={onClick} className="glass rounded-2xl p-3.5">
       <p className="text-xl">{icon}</p>
       <p className="text-[13px] font-semibold mt-1 truncate">{value}</p>
       <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/70 mt-0.5">{label}</p>
-    </div>
+    </Clickable>
   );
 }
+
 
 /* ───────── 2. Status do Sistema ───────── */
 
@@ -641,6 +891,7 @@ function PassivesSection({ state }: { state: S }) {
   const passives = computePassives(state);
   const unlocked = passives.filter((p) => p.unlocked);
   const locked = passives.filter((p) => !p.unlocked);
+  const [sel, setSel] = useState<(typeof passives)[number] | null>(null);
 
   return (
     <div className="space-y-3">
@@ -651,12 +902,12 @@ function PassivesSection({ state }: { state: S }) {
         ) : (
           <div className="grid grid-cols-2 gap-2.5">
             {unlocked.map((p) => (
-              <div key={p.key} className="relative overflow-hidden rounded-2xl p-3 ring-1 ring-electric/30 bg-electric/[0.07]">
-                <div className="pointer-events-none absolute -top-8 -right-8 h-20 w-20 rounded-full bg-electric/20 blur-2xl" />
+              <Clickable key={p.key} onClick={() => setSel(p)} className="relative overflow-hidden rounded-2xl p-3 ring-1 ring-electric/30 bg-electric/[0.07]">
+                <div className="pointer-events-none absolute -top-8 -right-8 h-20 w-20 rounded-full bg-electric/20 blur-2xl animate-pulse" />
                 <p className="text-xl">{p.icon}</p>
                 <p className="text-[12px] font-semibold mt-1">{p.name}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{p.desc}</p>
-              </div>
+              </Clickable>
             ))}
           </div>
         )}
@@ -666,17 +917,36 @@ function PassivesSection({ state }: { state: S }) {
         <SectionTitle icon="🔒" title="Selos não revelados" />
         <div className="grid grid-cols-2 gap-2.5">
           {locked.map((p) => (
-            <div key={p.key} className="rounded-2xl p-3 ring-hair bg-white/[0.03]">
+            <Clickable key={p.key} onClick={() => setSel(p)} className="rounded-2xl p-3 ring-hair bg-white/[0.03]">
               <p className="text-xl opacity-50">{p.secret ? "❔" : p.icon}</p>
               <p className="text-[12px] font-semibold mt-1 text-muted-foreground">{p.secret ? "?????" : p.name}</p>
               <p className="text-[10px] text-muted-foreground/60 mt-0.5">{p.hint}</p>
-            </div>
+            </Clickable>
           ))}
         </div>
       </Panel>
+
+
+      <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.unlocked || !sel?.secret ? (sel?.name ?? "") : "?????"} sub={sel?.unlocked ? "Passiva ativa" : "Selo não revelado"} icon={sel?.secret && !sel?.unlocked ? "❔" : sel?.icon}>
+        {sel && (
+          <>
+            <ModalRow label="Estado" value={sel.unlocked ? "Ativa" : "Selada"} tone={sel.unlocked ? "text-emerald-300" : "text-muted-foreground"} />
+            <ModalRow label="Requisito" value={sel.hint} />
+            <ModalBlock title="Efeito">
+              <p className="text-[12px] text-muted-foreground">{sel.unlocked || !sel.secret ? sel.desc : "O Sistema ainda não revelou este poder."}</p>
+            </ModalBlock>
+            <ModalBlock title="Como evoluir">
+              <p className="text-[12px] text-muted-foreground">
+                Passivas evoluem sozinhas conforme os atributos ligados a ela sobem de nível. Registre ações reais nas áreas correspondentes para acelerar.
+              </p>
+            </ModalBlock>
+          </>
+        )}
+      </SysModal>
     </div>
   );
 }
+
 
 /* ───────── 8. Inventário ───────── */
 
@@ -684,6 +954,9 @@ function InventorySection() {
   const { data: items } = useInventory();
   const all = items ?? [];
   const [cat, setCat] = useState<string>("all");
+  const [sel, setSel] = useState<(typeof all)[number] | null>(null);
+  const [box, setBox] = useState<(typeof all)[number] | null>(null);
+  const [favs, setFavs] = useState<string[]>([]);
 
   const grouped = useMemo(() => {
     const map: Record<string, typeof all> = {};
@@ -695,6 +968,7 @@ function InventorySection() {
   }, [all]);
 
   const visible = cat === "all" ? all : (grouped[cat] ?? []);
+  const isBox = (it: { item_key: string }) => it.item_key.includes("box_");
 
   return (
     <div className="space-y-3">
@@ -718,18 +992,65 @@ function InventorySection() {
           {visible.map((item, i) => {
             const st = rarityStyle(item.rarity);
             return (
-              <div key={item.id} className={`glass rounded-2xl p-3 ring-1 ${st.ring} ${st.bg} animate-rise`} style={{ animationDelay: `${i * 25}ms` }}>
-                <div className="text-2xl mb-1.5">{item.icon}</div>
-                <p className={`text-[11px] font-semibold leading-tight ${st.text} line-clamp-2`}>{item.name}</p>
-                <p className="mt-1 text-[9px] uppercase tracking-wider text-muted-foreground/60">{item.rarity}</p>
-              </div>
+              <Clickable
+                key={item.id}
+                onClick={() => setSel(item)}
+                className={`relative glass rounded-2xl p-3 ring-1 ${st.ring} ${st.bg} animate-rise`}
+              >
+                <div style={{ animationDelay: `${i * 25}ms` }}>
+                  {favs.includes(item.id) && <span className="absolute top-2 right-2 text-[10px]">⭐</span>}
+                  <div className="text-2xl mb-1.5">{item.icon}</div>
+                  <p className={`text-[11px] font-semibold leading-tight ${st.text} line-clamp-2`}>{item.name}</p>
+                  <p className="mt-1 text-[9px] uppercase tracking-wider text-muted-foreground/60">{item.rarity}</p>
+                </div>
+              </Clickable>
             );
           })}
         </div>
       )}
+
+      <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.name ?? ""} sub={sel?.description ?? undefined} icon={sel?.icon}>
+        {sel && (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <ModalRow label="Raridade" value={sel.rarity} tone={rarityStyle(sel.rarity).text} />
+              <ModalRow label="Tipo" value={sel.kind} />
+              <ModalRow label="Quantidade" value="1x" />
+              <ModalRow label="Obtido em" value={new Date(sel.earned_at).toLocaleDateString("pt-BR")} />
+            </div>
+            <ModalBlock title="Origem">
+              <p className="text-[12px] text-muted-foreground">
+                Registro <span className="text-foreground/80">{sel.item_key}</span> materializado pelo Sistema.
+              </p>
+            </ModalBlock>
+            <div className="grid grid-cols-2 gap-2">
+              {isBox(sel) && (
+                <button
+                  onClick={() => { const b = sel; setSel(null); setBox(b); }}
+                  className="tap col-span-2 rounded-2xl py-2.5 text-[12px] font-semibold bg-electric/20 text-electric ring-hair hover:bg-electric/30 transition"
+                >
+                  ABRIR AGORA
+                </button>
+              )}
+              <button
+                onClick={() => setFavs((f) => (f.includes(sel.id) ? f.filter((x) => x !== sel.id) : [...f, sel.id]))}
+                className="tap rounded-2xl py-2.5 text-[12px] font-semibold bg-white/[0.05] ring-hair hover:text-foreground transition"
+              >
+                {favs.includes(sel.id) ? "★ Favorito" : "☆ Favoritar"}
+              </button>
+              <button onClick={() => setSel(null)} className="tap rounded-2xl py-2.5 text-[12px] font-semibold bg-white/[0.05] text-muted-foreground ring-hair transition">
+                Guardar
+              </button>
+            </div>
+          </>
+        )}
+      </SysModal>
+
+      <BoxOpening box={box} onClose={() => setBox(null)} />
     </div>
   );
 }
+
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -746,11 +1067,25 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 
 /* ───────── 9. Relíquias ───────── */
 
+const RELIC_LORE: Record<string, string> = {
+  relic_chronos: "Dizem que Chronos foi forjada pela repetição: mil dias idênticos comprimidos em uma única pedra.",
+  relic_atlas: "Atlas carrega o peso do que você levantou. Cada treino registrado adicionou um grama à sua massa.",
+  relic_oraculo: "O Oráculo nasceu de páginas lidas em silêncio. Ele não prevê o futuro: ele o calcula.",
+  relic_vault: "O Cofre guarda tudo o que você não gastou. É feito de decisões frias tomadas em dias quentes.",
+  relic_phoenix: "A Fênix surge apenas depois de uma recaída superada. Ela só existe porque você voltou.",
+};
+
+function relicLore(key: string) {
+  const k = Object.keys(RELIC_LORE).find((x) => key.includes(x));
+  return k ? RELIC_LORE[k] : "Origem desconhecida. O Sistema apenas registrou sua chegada.";
+}
+
 function RelicsSection() {
   const { data: items } = useInventory();
   const { data: shop } = useShop();
   const owned = (items ?? []).filter((i) => isRelic(i.item_key));
   const catalog = (shop ?? []).filter((s) => isRelic(s.key));
+  const [sel, setSel] = useState<{ key: string; name: string; icon: string; description: string | null; rarity: string; owned: boolean; price?: number; level?: number } | null>(null);
 
   return (
     <div className="space-y-3">
@@ -771,14 +1106,21 @@ function RelicsSection() {
             {owned.map((it) => {
               const st = rarityStyle(it.rarity);
               return (
-                <div key={it.id} className={`relative overflow-hidden rounded-2xl p-3.5 ring-1 ${st.ring} ${st.bg} flex items-center gap-3`}>
-                  <div className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
-                  <span className="text-3xl">{it.icon}</span>
-                  <div className="min-w-0">
-                    <p className={`text-[13px] font-semibold ${st.text}`}>{it.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{it.description}</p>
+                <Clickable
+                  key={it.id}
+                  onClick={() => setSel({ key: it.item_key, name: it.name, icon: it.icon, description: it.description, rarity: it.rarity, owned: true })}
+                  className={`relative overflow-hidden rounded-2xl p-3.5 ring-1 ${st.ring} ${st.bg}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-white/10 blur-2xl animate-pulse" />
+                    <span className="text-3xl">{it.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-[13px] font-semibold ${st.text}`}>{it.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{it.description}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
                   </div>
-                </div>
+                </Clickable>
               );
             })}
           </div>
@@ -792,23 +1134,63 @@ function RelicsSection() {
             const has = owned.some((o) => o.item_key.includes(r.key));
             const st = rarityStyle(r.rarity);
             return (
-              <div key={r.key} className={`rounded-2xl p-3.5 ring-1 ${has ? st.ring : "ring-white/10"} ${has ? st.bg : "bg-white/[0.03]"} flex items-center gap-3`}>
-                <span className={`text-2xl ${has ? "" : "grayscale opacity-50"}`}>{has ? r.icon : "❔"}</span>
-                <div className="min-w-0 flex-1">
-                  <p className={`text-[12px] font-semibold ${has ? st.text : "text-muted-foreground"}`}>{has ? r.name : "?????"}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{has ? r.description : `Selada · requer nível ${r.required_level}`}</p>
+              <Clickable
+                key={r.key}
+                onClick={() => setSel({ key: r.key, name: has ? r.name : "?????", icon: has ? r.icon : "❔", description: r.description, rarity: r.rarity, owned: has, price: r.price, level: r.required_level })}
+                className={`rounded-2xl p-3.5 ring-1 ${has ? st.ring : "ring-white/10"} ${has ? st.bg : "bg-white/[0.03]"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`text-2xl ${has ? "" : "grayscale opacity-50"}`}>{has ? r.icon : "❔"}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-[12px] font-semibold ${has ? st.text : "text-muted-foreground"}`}>{has ? r.name : "?????"}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{has ? r.description : `Selada · requer nível ${r.required_level}`}</p>
+                  </div>
+                  <span className="text-[10px] text-amber-300 flex items-center gap-1"><Gem className="h-3 w-3" />{r.price}</span>
                 </div>
-                <span className="text-[10px] text-amber-300 flex items-center gap-1"><Gem className="h-3 w-3" />{r.price}</span>
-              </div>
+              </Clickable>
             );
           })}
         </div>
       </Panel>
+
+      <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.name ?? ""} sub={sel?.owned ? "Relíquia em sua posse" : "Registro selado"} icon={sel?.icon}>
+        {sel && (
+          <>
+            <ModalRow label="Raridade" value={sel.rarity} tone={rarityStyle(sel.rarity as never).text} />
+            {sel.price != null && <ModalRow label="Valor" value={<span className="text-amber-300">{sel.price} fragmentos</span>} />}
+            {sel.level != null && <ModalRow label="Requisito" value={`Nível ${sel.level}`} />}
+            <ModalBlock title="Passiva">
+              <p className="text-[12px] text-muted-foreground">{sel.owned ? (sel.description ?? "Efeito permanente ativo.") : "?????"}</p>
+            </ModalBlock>
+            <ModalBlock title="Lore">
+              <p className="text-[12px] text-muted-foreground italic">{sel.owned ? relicLore(sel.key) : "A história desta relíquia só se revela a quem a possui."}</p>
+            </ModalBlock>
+          </>
+        )}
+      </SysModal>
     </div>
   );
 }
 
+
 /* ───────── 10. Loja ───────── */
+
+const SHOP_CATS = [
+  { key: "all", label: "Tudo", icon: "🛒" },
+  { key: "artifact", label: "Artefatos", icon: "🗝️" },
+  { key: "relic", label: "Relíquias", icon: "🔮" },
+  { key: "boost", label: "Boosts", icon: "🔆" },
+  { key: "box", label: "Caixas", icon: "📦" },
+  { key: "cosmetic", label: "Cosméticos", icon: "🌌" },
+  { key: "legendary", label: "Lendários", icon: "👑" },
+  { key: "secret", label: "Secretos", icon: "❔" },
+] as const;
+
+function shopCat(it: { key: string; kind: string; rarity: string }) {
+  if (it.key.includes("box_")) return "box";
+  if (isRelic(it.key)) return "relic";
+  return it.kind;
+}
 
 function ShopSection({ state }: { state: S }) {
   const { data: items } = useShop();
@@ -816,9 +1198,19 @@ function ShopSection({ state }: { state: S }) {
   const coins = state?.coins?.balance ?? 0;
   const level = state?.profile?.level ?? 1;
   const owned = state?.purchases ?? [];
+  const [cat, setCat] = useState<string>("all");
+  const [sel, setSel] = useState<(typeof visible)[number] | null>(null);
 
-  const visible = (items ?? []).filter((it) => it.required_level <= level + 5);
-  const sealed = (items ?? []).length - visible.length;
+  const all = items ?? [];
+  const visible = all.filter((it) => it.required_level <= level + 5);
+  const sealed = all.length - visible.length;
+
+  const filtered = visible.filter((it) => {
+    if (cat === "all") return true;
+    if (cat === "legendary") return it.rarity === "legendary" || it.rarity === "mythic";
+    if (cat === "secret") return it.required_level > level;
+    return shopCat(it) === cat;
+  });
 
   return (
     <div className="space-y-3">
@@ -834,34 +1226,45 @@ function ShopSection({ state }: { state: S }) {
         </p>
       </Panel>
 
+      <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        {SHOP_CATS.map((c) => (
+          <Chip key={c.key} active={cat === c.key} onClick={() => setCat(c.key)}>
+            {c.icon} {c.label}
+          </Chip>
+        ))}
+      </div>
+
       <div className="grid grid-cols-2 gap-2.5">
-        {visible.map((it, i) => {
+        {filtered.map((it, i) => {
           const st = rarityStyle(it.rarity);
           const has = owned.includes(it.key);
           const canLevel = level >= it.required_level;
           const canAfford = coins >= it.price;
-          const disabled = has || !canLevel || !canAfford || buy.isPending;
           return (
-            <div key={it.key} className={`relative overflow-hidden glass rounded-2xl p-3.5 ring-1 ${st.ring} ${st.bg} animate-rise`} style={{ animationDelay: `${i * 30}ms` }}>
-              {it.rarity === "mythic" && <div className="pointer-events-none absolute -top-10 -right-10 h-24 w-24 rounded-full bg-rose-500/25 blur-2xl" />}
-              <div className="text-2xl">{canLevel ? it.icon : "🔒"}</div>
-              <p className={`mt-1.5 text-[12px] font-semibold leading-tight ${st.text}`}>{canLevel ? it.name : "?????"}</p>
-              <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{canLevel ? it.description : "Item selado pelo Sistema."}</p>
-              <p className="mt-1.5 text-[9px] uppercase tracking-wider text-muted-foreground/60">{it.rarity} · Lv {it.required_level}+</p>
-              <button
-                disabled={disabled}
-                onClick={() => buy.mutate(it.key)}
-                className={`tap mt-2 w-full rounded-xl py-1.5 text-[11px] font-semibold ring-hair transition flex items-center justify-center gap-1 ${
-                  has ? "bg-emerald-500/15 text-emerald-300"
-                    : disabled ? "bg-white/[0.03] text-muted-foreground/60"
-                    : "bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
-                }`}
-              >
-                {has ? <><Check className="h-3 w-3" /> Adquirido</> : <><Gem className="h-3 w-3" /> {it.price}</>}
-              </button>
-              {!has && !canLevel && <p className="mt-1 text-[9px] text-muted-foreground/70 text-center">Requer nível {it.required_level}</p>}
-              {!has && canLevel && !canAfford && <p className="mt-1 text-[9px] text-muted-foreground/70 text-center">Faltam {it.price - coins}</p>}
-            </div>
+            <Clickable
+              key={it.key}
+              onClick={() => canLevel && !has && setSel(it)}
+              className={`relative overflow-hidden glass rounded-2xl p-3.5 ring-1 ${st.ring} ${st.bg} animate-rise`}
+            >
+              <div style={{ animationDelay: `${i * 30}ms` }}>
+                {it.rarity === "mythic" && <div className="pointer-events-none absolute -top-10 -right-10 h-24 w-24 rounded-full bg-rose-500/25 blur-2xl animate-pulse" />}
+                <div className="text-2xl">{canLevel ? it.icon : "🔒"}</div>
+                <p className={`mt-1.5 text-[12px] font-semibold leading-tight ${st.text}`}>{canLevel ? it.name : "?????"}</p>
+                <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{canLevel ? it.description : "Item selado pelo Sistema."}</p>
+                <p className="mt-1.5 text-[9px] uppercase tracking-wider text-muted-foreground/60">{it.rarity} · Lv {it.required_level}+</p>
+                <div
+                  className={`mt-2 w-full rounded-xl py-1.5 text-[11px] font-semibold ring-hair transition flex items-center justify-center gap-1 ${
+                    has ? "bg-emerald-500/15 text-emerald-300"
+                      : !canLevel ? "bg-white/[0.03] text-muted-foreground/60"
+                      : "bg-amber-500/15 text-amber-300"
+                  }`}
+                >
+                  {has ? <><Check className="h-3 w-3" /> Adquirido</> : <><Gem className="h-3 w-3" /> {it.price}</>}
+                </div>
+                {!has && !canLevel && <p className="mt-1 text-[9px] text-muted-foreground/70 text-center">Requer nível {it.required_level}</p>}
+                {!has && canLevel && !canAfford && <p className="mt-1 text-[9px] text-muted-foreground/70 text-center">Faltam {it.price - coins}</p>}
+              </div>
+            </Clickable>
           );
         })}
         {sealed > 0 && (
@@ -872,66 +1275,106 @@ function ShopSection({ state }: { state: S }) {
           </div>
         )}
       </div>
+
+      <PurchaseFlow
+        open={!!sel}
+        onClose={() => setSel(null)}
+        item={sel ? { key: sel.key, name: sel.name, icon: sel.icon, price: sel.price, rarity: sel.rarity, description: sel.description } : null}
+        balance={coins}
+        pending={buy.isPending}
+        allowQty={!!sel && (sel.key.includes("box_") || sel.kind === "boost")}
+        onConfirm={async (qty) => {
+          for (let i = 0; i < qty; i++) await buy.mutateAsync(sel!.key);
+        }}
+      />
     </div>
   );
 }
 
+
 /* ───────── 11. Bosses ───────── */
+
+function useWeekCountdown() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const end = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + (7 - ((d.getDay() + 6) % 7)));
+    return d.getTime();
+  }, []);
+  const ms = Math.max(0, end - now);
+  const dd = Math.floor(ms / 86400000);
+  const hh = Math.floor((ms % 86400000) / 3600000);
+  const mm = Math.floor((ms % 3600000) / 60000);
+  const ss = Math.floor((ms % 60000) / 1000);
+  return `${dd}d ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+}
 
 function BossesSection() {
   const { data: boss } = useWeeklyBoss();
   const { data: history } = useBossHistory();
   const monthly = monthlyBoss(history ?? []);
   const defeated = (history ?? []).filter((b) => b.status === "completed");
+  const countdown = useWeekCountdown();
+  const [modal, setModal] = useState<string | null>(null);
+  const [sel, setSel] = useState<(typeof defeated)[number] | null>(null);
 
   return (
     <div className="space-y-3">
-      <Panel className="relative overflow-hidden">
-        <Particles />
-        <div className="relative">
-          <SectionTitle icon="👹" title="Boss da semana" />
-          {boss ? (
-            <>
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-3xl">{boss.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-semibold">{boss.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{boss.description}</p>
+      <Clickable onClick={() => setModal("weekly")}>
+        <Panel className="relative overflow-hidden">
+          <Particles />
+          <div className="relative">
+            <SectionTitle icon="👹" title="Boss da semana" sub={`Tempo restante · ${countdown}`} />
+            {boss ? (
+              <>
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-3xl">{boss.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold">{boss.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{boss.description}</p>
+                  </div>
+                  <span className={`shrink-0 text-[10px] px-2 py-1 rounded-full ring-hair ${boss.status === "completed" ? "text-emerald-300 bg-emerald-500/10" : "text-amber-300 bg-amber-500/10"}`}>
+                    {boss.status === "completed" ? "Derrotado" : `+${boss.xp_reward} XP`}
+                  </span>
                 </div>
-                <span className={`shrink-0 text-[10px] px-2 py-1 rounded-full ring-hair ${boss.status === "completed" ? "text-emerald-300 bg-emerald-500/10" : "text-amber-300 bg-amber-500/10"}`}>
-                  {boss.status === "completed" ? "Derrotado" : `+${boss.xp_reward} XP`}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {boss.objectives.map((o) => {
-                  const done = o.current >= o.target;
-                  return (
-                    <div key={o.key}>
-                      <div className="flex justify-between text-[11px] mb-1">
-                        <span className={done ? "text-emerald-300" : "text-foreground/80"}>{o.label}</span>
-                        <span className="text-muted-foreground">{o.current}/{o.target}</span>
+                <div className="space-y-2">
+                  {boss.objectives.map((o) => {
+                    const done = o.current >= o.target;
+                    return (
+                      <div key={o.key}>
+                        <div className="flex justify-between text-[11px] mb-1">
+                          <span className={done ? "text-emerald-300" : "text-foreground/80"}>{o.label}</span>
+                          <span className="text-muted-foreground">{o.current}/{o.target}</span>
+                        </div>
+                        <Bar pct={(o.current / Math.max(1, o.target)) * 100} className={done ? "bg-emerald-400" : "bg-gradient-to-r from-electric to-primary"} />
                       </div>
-                      <Bar pct={(o.current / Math.max(1, o.target)) * 100} className={done ? "bg-emerald-400" : "bg-gradient-to-r from-electric to-primary"} />
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          ) : (
-            <Hidden label="nenhum boss ativo" />
-          )}
-        </div>
-      </Panel>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <Hidden label="nenhum boss ativo" />
+            )}
+          </div>
+        </Panel>
+      </Clickable>
 
-      <Panel>
-        <SectionTitle icon="🌑" title="Boss mensal" sub="Derrote os bosses semanais do mês" />
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[12px] font-semibold">{monthly.defeated ? "Colosso derrotado" : "Colosso do Mês"}</span>
-          <span className="text-[11px] text-muted-foreground">{monthly.done}/{monthly.target}</span>
-        </div>
-        <Bar pct={monthly.pct} className={monthly.defeated ? "bg-emerald-400" : "bg-gradient-to-r from-rose-400 to-amber-400"} />
-        <p className="mt-2 text-[10px] text-muted-foreground/70">Recompensa acumulada: {monthly.reward.toLocaleString("pt-BR")} XP</p>
-      </Panel>
+      <Clickable onClick={() => setModal("monthly")}>
+        <Panel>
+          <SectionTitle icon="🌑" title="Boss mensal" sub="Derrote os bosses semanais do mês" />
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[12px] font-semibold">{monthly.defeated ? "Colosso derrotado" : "Colosso do Mês"}</span>
+            <span className="text-[11px] text-muted-foreground">{monthly.done}/{monthly.target}</span>
+          </div>
+          <Bar pct={monthly.pct} className={monthly.defeated ? "bg-emerald-400" : "bg-gradient-to-r from-rose-400 to-amber-400"} />
+          <p className="mt-2 text-[10px] text-muted-foreground/70">Recompensa acumulada: {monthly.reward.toLocaleString("pt-BR")} XP</p>
+        </Panel>
+      </Clickable>
 
       <Panel>
         <SectionTitle icon="🏆" title={`Bosses derrotados (${defeated.length})`} />
@@ -940,34 +1383,118 @@ function BossesSection() {
         ) : (
           <div className="space-y-2">
             {defeated.map((b) => (
-              <div key={b.id} className="rounded-2xl p-3 ring-hair bg-emerald-500/[0.07] flex items-center gap-3">
-                <span className="text-xl">{b.icon ?? "👹"}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-semibold">{b.name}</p>
-                  <p className="text-[10px] text-muted-foreground">semana de {new Date(b.week_start).toLocaleDateString("pt-BR")}</p>
+              <Clickable key={b.id} onClick={() => setSel(b)} className="rounded-2xl p-3 ring-hair bg-emerald-500/[0.07]">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{b.icon ?? "👹"}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-semibold">{b.name}</p>
+                    <p className="text-[10px] text-muted-foreground">semana de {new Date(b.week_start).toLocaleDateString("pt-BR")}</p>
+                  </div>
+                  <span className="text-[10px] text-emerald-300">+{b.xp_reward} XP</span>
                 </div>
-                <span className="text-[10px] text-emerald-300">+{b.xp_reward} XP</span>
-              </div>
+              </Clickable>
             ))}
           </div>
         )}
       </Panel>
 
-      <Panel className="text-center">
-        <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Próximo boss</p>
-        <p className="text-3xl mt-2 opacity-60">❔</p>
-        <p className="mt-1"><Hidden /></p>
-        <p className="text-[10px] text-muted-foreground/60 mt-1">Revelado no início da próxima semana</p>
-      </Panel>
+      <Clickable onClick={() => setModal("next")}>
+        <Panel className="text-center">
+          <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Próximo boss</p>
+          <p className="text-3xl mt-2 opacity-60">❔</p>
+          <p className="mt-1"><Hidden /></p>
+          <p className="text-[10px] text-muted-foreground/60 mt-1">Revelado em {countdown}</p>
+        </Panel>
+      </Clickable>
+
+      <SysModal open={modal === "weekly"} onClose={() => setModal(null)} title={boss?.name ?? "Nenhum boss ativo"} sub={boss?.description ?? undefined} icon={boss?.icon ?? "👹"}>
+        {boss ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <ModalRow label="Recompensa" value={`+${boss.xp_reward} XP`} tone="text-amber-300" />
+              <ModalRow label="Tempo restante" value={countdown} />
+              <ModalRow label="Status" value={boss.status === "completed" ? "Derrotado" : "Em combate"} />
+              <ModalRow label="Semana" value={new Date(boss.week_start).toLocaleDateString("pt-BR")} />
+            </div>
+            <ModalBlock title="Objetivos">
+              <div className="space-y-2">
+                {boss.objectives.map((o) => (
+                  <div key={o.key}>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span>{o.label}</span>
+                      <span className="text-muted-foreground">{o.current}/{o.target}</span>
+                    </div>
+                    <Bar pct={(o.current / Math.max(1, o.target)) * 100} className={o.current >= o.target ? "bg-emerald-400" : "bg-electric"} />
+                  </div>
+                ))}
+              </div>
+            </ModalBlock>
+          </>
+        ) : <Hidden />}
+      </SysModal>
+
+      <SysModal open={modal === "monthly"} onClose={() => setModal(null)} title="Colosso do Mês" sub="Formado pelos bosses semanais" icon="🌑">
+        <div className="grid grid-cols-2 gap-2">
+          <ModalRow label="Progresso" value={`${monthly.done}/${monthly.target}`} />
+          <ModalRow label="Conclusão" value={`${monthly.pct}%`} tone="text-electric" />
+          <ModalRow label="Recompensa" value={`${monthly.reward.toLocaleString("pt-BR")} XP`} tone="text-amber-300" />
+          <ModalRow label="Estado" value={monthly.defeated ? "Derrotado" : "Vivo"} tone={monthly.defeated ? "text-emerald-300" : "text-rose-300"} />
+        </div>
+        <ModalBlock title="Histórico do mês">
+          <div className="space-y-1.5">
+            {(history ?? []).slice(0, 8).map((b) => (
+              <div key={b.id} className="flex items-center justify-between rounded-2xl bg-white/[0.03] ring-hair px-3 py-2">
+                <span className="text-[11px] truncate">{b.icon} {b.name}</span>
+                <span className={`text-[10px] ${b.status === "completed" ? "text-emerald-300" : "text-muted-foreground"}`}>{b.status}</span>
+              </div>
+            ))}
+          </div>
+        </ModalBlock>
+      </SysModal>
+
+      <SysModal open={modal === "next"} onClose={() => setModal(null)} title="?????" sub="Registro selado pelo Sistema" icon="❔">
+        <ModalRow label="Revelação em" value={countdown} />
+        <ModalBlock title="Leitura parcial">
+          <p className="text-[12px] text-muted-foreground">
+            O Sistema já detecta a assinatura do próximo desafio, mas se recusa a nomeá-lo. Continue evoluindo — quanto maior sua sincronia, mais forte será o boss e maior a recompensa.
+          </p>
+        </ModalBlock>
+      </SysModal>
+
+      <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.name ?? ""} sub={sel?.description ?? undefined} icon={sel?.icon ?? "👹"}>
+        {sel && (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <ModalRow label="Recompensa" value={`+${sel.xp_reward} XP`} tone="text-amber-300" />
+              <ModalRow label="Semana" value={new Date(sel.week_start).toLocaleDateString("pt-BR")} />
+            </div>
+            <ModalBlock title="Objetivos cumpridos">
+              <div className="space-y-2">
+                {(sel.objectives ?? []).map((o) => (
+                  <div key={o.key}>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span>{o.label}</span>
+                      <span className="text-muted-foreground">{o.current}/{o.target}</span>
+                    </div>
+                    <Bar pct={(o.current / Math.max(1, o.target)) * 100} className="bg-emerald-400" />
+                  </div>
+                ))}
+              </div>
+            </ModalBlock>
+          </>
+        )}
+      </SysModal>
     </div>
   );
 }
+
 
 /* ───────── 12. Conquistas ───────── */
 
 function AchievementsSection() {
   const { data: achievements } = useAchievementsList();
   const list = achievements ?? [];
+  const [sel, setSel] = useState<(typeof list)[number] | null>(null);
   const byTier = useMemo(() => {
     const map: Record<AchvTier, typeof list> = { comum: [], rara: [], epica: [], lendaria: [], secreta: [] };
     list.forEach((a) => map[achievementTier(a.badge_key)].push(a));
@@ -1007,19 +1534,35 @@ function AchievementsSection() {
             ) : (
               <div className="grid grid-cols-3 gap-2.5">
                 {rows.map((a) => (
-                  <div key={a.id} className={`rounded-2xl p-3 ring-1 ${st.ring} ${st.bg} text-center`}>
+                  <Clickable key={a.id} onClick={() => setSel(a)} className={`rounded-2xl p-3 ring-1 ${st.ring} ${st.bg} text-center`}>
                     <p className="text-xl">{a.icon ?? "🏅"}</p>
                     <p className={`text-[10px] font-semibold mt-1 line-clamp-2 ${st.text}`}>{a.name}</p>
-                  </div>
+                  </Clickable>
                 ))}
               </div>
             )}
           </Panel>
         );
       })}
+
+      <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.name ?? ""} sub={sel?.description ?? undefined} icon={sel?.icon ?? "🏅"}>
+        {sel && (
+          <>
+            <ModalRow label="Raridade" value={TIER_STYLE[achievementTier(sel.badge_key)].label} tone={TIER_STYLE[achievementTier(sel.badge_key)].text} />
+            <ModalRow label="Desbloqueada em" value={new Date(sel.unlocked_at).toLocaleString("pt-BR")} />
+            <ModalRow label="Fragmentos gerados" value="+25" tone="text-amber-300" />
+            <ModalBlock title="Origem">
+              <p className="text-[12px] text-muted-foreground">
+                Registro <span className="text-foreground/80">{sel.badge_key}</span> emitido automaticamente pelo Sistema ao detectar o marco correspondente na sua evolução real.
+              </p>
+            </ModalBlock>
+          </>
+        )}
+      </SysModal>
     </div>
   );
 }
+
 
 /* ───────── 13. Histórico de Evolução ───────── */
 
@@ -1036,6 +1579,10 @@ const CATEGORY_TONE: Record<string, string> = {
 function EvolutionSection() {
   const { data: events } = useTimeline(80);
   const list = events ?? [];
+  const [sel, setSel] = useState<(typeof list)[number] | null>(null);
+  const [cat, setCat] = useState<string>("all");
+  const cats = useMemo(() => [...new Set(list.map((e) => e.category))], [list]);
+  const shown = cat === "all" ? list : list.filter((e) => e.category === cat);
 
   return (
     <div className="space-y-3">
@@ -1047,7 +1594,18 @@ function EvolutionSection() {
         </div>
       </Panel>
 
-      {list.length === 0 ? (
+      {cats.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          <Chip active={cat === "all"} onClick={() => setCat("all")}>Tudo ({list.length})</Chip>
+          {cats.map((c) => (
+            <Chip key={c} active={cat === c} onClick={() => setCat(c)}>
+              {c} ({list.filter((e) => e.category === c).length})
+            </Chip>
+          ))}
+        </div>
+      )}
+
+      {shown.length === 0 ? (
         <Panel className="text-center py-8">
           <p className="text-4xl mb-2">🕰️</p>
           <p className="text-sm font-semibold">A linha do tempo está vazia</p>
@@ -1058,25 +1616,45 @@ function EvolutionSection() {
           <div className="relative pl-6">
             <div className="absolute left-[9px] top-1 bottom-1 w-px bg-gradient-to-b from-electric/50 via-white/10 to-transparent" />
             <div className="space-y-4">
-              {list.map((e, i) => (
+              {shown.map((e, i) => (
                 <div key={e.id} className="relative animate-rise" style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}>
                   <span className={`absolute -left-[19px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-background ${CATEGORY_TONE[e.category] ?? "bg-slate-400"}`} />
-                  <div className="flex items-start gap-2">
-                    <span className="text-lg leading-none">{e.icon}</span>
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-semibold leading-snug">{e.title}</p>
-                      {e.description && <p className="text-[11px] text-muted-foreground leading-snug">{e.description}</p>}
-                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">
-                        {new Date(e.occurred_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
-                      </p>
+                  <Clickable onClick={() => setSel(e)}>
+                    <div className="flex items-start gap-2">
+                      <span className="text-lg leading-none">{e.icon}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-semibold leading-snug">{e.title}</p>
+                        {e.description && <p className="text-[11px] text-muted-foreground leading-snug">{e.description}</p>}
+                        <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">
+                          {new Date(e.occurred_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 mt-1" />
                     </div>
-                  </div>
+                  </Clickable>
                 </div>
               ))}
             </div>
           </div>
         </Panel>
       )}
+
+      <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.title ?? ""} sub={sel?.description ?? undefined} icon={sel?.icon}>
+        {sel && (
+          <>
+            <ModalRow label="Categoria" value={sel.category} />
+            <ModalRow label="Data" value={new Date(sel.occurred_at).toLocaleString("pt-BR")} />
+            <ModalRow label="Chave do evento" value={<span className="text-muted-foreground">{sel.event_key}</span>} />
+            {typeof sel.metadata?.xp === "number" && <ModalRow label="XP recebido" value={`+${sel.metadata.xp}`} tone="text-emerald-300" />}
+            <ModalBlock title="Registro do Sistema">
+              <pre className="text-[10px] text-muted-foreground whitespace-pre-wrap break-all rounded-2xl bg-white/[0.03] ring-hair p-3">
+                {JSON.stringify(sel.metadata ?? {}, null, 1)}
+              </pre>
+            </ModalBlock>
+          </>
+        )}
+      </SysModal>
     </div>
   );
 }
+
