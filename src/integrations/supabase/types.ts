@@ -1396,6 +1396,7 @@ export type Database = {
       get_mission_stats: { Args: never; Returns: Json }
       get_user_stats: { Args: never; Returns: Json }
       get_weekly_boss_progress: { Args: never; Returns: Json }
+      open_system_box: { Args: { p_inventory_id: string }; Returns: Json }
       project_future: { Args: { p_days: number }; Returns: Json }
       recalc_xp: { Args: never; Returns: undefined }
       recompute_user_xp: { Args: { p_user: string }; Returns: number }
