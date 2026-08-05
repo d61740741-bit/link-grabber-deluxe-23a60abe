@@ -1286,6 +1286,10 @@ const CATEGORY_TONE: Record<string, string> = {
 function EvolutionSection() {
   const { data: events } = useTimeline(80);
   const list = events ?? [];
+  const [sel, setSel] = useState<(typeof list)[number] | null>(null);
+  const [cat, setCat] = useState<string>("all");
+  const cats = useMemo(() => [...new Set(list.map((e) => e.category))], [list]);
+  const shown = cat === "all" ? list : list.filter((e) => e.category === cat);
 
   return (
     <div className="space-y-3">
@@ -1297,7 +1301,18 @@ function EvolutionSection() {
         </div>
       </Panel>
 
-      {list.length === 0 ? (
+      {cats.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          <Chip active={cat === "all"} onClick={() => setCat("all")}>Tudo ({list.length})</Chip>
+          {cats.map((c) => (
+            <Chip key={c} active={cat === c} onClick={() => setCat(c)}>
+              {c} ({list.filter((e) => e.category === c).length})
+            </Chip>
+          ))}
+        </div>
+      )}
+
+      {shown.length === 0 ? (
         <Panel className="text-center py-8">
           <p className="text-4xl mb-2">🕰️</p>
           <p className="text-sm font-semibold">A linha do tempo está vazia</p>
@@ -1308,25 +1323,45 @@ function EvolutionSection() {
           <div className="relative pl-6">
             <div className="absolute left-[9px] top-1 bottom-1 w-px bg-gradient-to-b from-electric/50 via-white/10 to-transparent" />
             <div className="space-y-4">
-              {list.map((e, i) => (
+              {shown.map((e, i) => (
                 <div key={e.id} className="relative animate-rise" style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}>
                   <span className={`absolute -left-[19px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-background ${CATEGORY_TONE[e.category] ?? "bg-slate-400"}`} />
-                  <div className="flex items-start gap-2">
-                    <span className="text-lg leading-none">{e.icon}</span>
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-semibold leading-snug">{e.title}</p>
-                      {e.description && <p className="text-[11px] text-muted-foreground leading-snug">{e.description}</p>}
-                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">
-                        {new Date(e.occurred_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
-                      </p>
+                  <Clickable onClick={() => setSel(e)}>
+                    <div className="flex items-start gap-2">
+                      <span className="text-lg leading-none">{e.icon}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-semibold leading-snug">{e.title}</p>
+                        {e.description && <p className="text-[11px] text-muted-foreground leading-snug">{e.description}</p>}
+                        <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">
+                          {new Date(e.occurred_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 mt-1" />
                     </div>
-                  </div>
+                  </Clickable>
                 </div>
               ))}
             </div>
           </div>
         </Panel>
       )}
+
+      <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.title ?? ""} sub={sel?.description ?? undefined} icon={sel?.icon}>
+        {sel && (
+          <>
+            <ModalRow label="Categoria" value={sel.category} />
+            <ModalRow label="Data" value={new Date(sel.occurred_at).toLocaleString("pt-BR")} />
+            <ModalRow label="Chave do evento" value={<span className="text-muted-foreground">{sel.event_key}</span>} />
+            {typeof sel.metadata?.xp === "number" && <ModalRow label="XP recebido" value={`+${sel.metadata.xp}`} tone="text-emerald-300" />}
+            <ModalBlock title="Registro do Sistema">
+              <pre className="text-[10px] text-muted-foreground whitespace-pre-wrap break-all rounded-2xl bg-white/[0.03] ring-hair p-3">
+                {JSON.stringify(sel.metadata ?? {}, null, 1)}
+              </pre>
+            </ModalBlock>
+          </>
+        )}
+      </SysModal>
     </div>
   );
 }
+
