@@ -996,11 +996,25 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 
 /* ───────── 9. Relíquias ───────── */
 
+const RELIC_LORE: Record<string, string> = {
+  relic_chronos: "Dizem que Chronos foi forjada pela repetição: mil dias idênticos comprimidos em uma única pedra.",
+  relic_atlas: "Atlas carrega o peso do que você levantou. Cada treino registrado adicionou um grama à sua massa.",
+  relic_oraculo: "O Oráculo nasceu de páginas lidas em silêncio. Ele não prevê o futuro: ele o calcula.",
+  relic_vault: "O Cofre guarda tudo o que você não gastou. É feito de decisões frias tomadas em dias quentes.",
+  relic_phoenix: "A Fênix surge apenas depois de uma recaída superada. Ela só existe porque você voltou.",
+};
+
+function relicLore(key: string) {
+  const k = Object.keys(RELIC_LORE).find((x) => key.includes(x));
+  return k ? RELIC_LORE[k] : "Origem desconhecida. O Sistema apenas registrou sua chegada.";
+}
+
 function RelicsSection() {
   const { data: items } = useInventory();
   const { data: shop } = useShop();
   const owned = (items ?? []).filter((i) => isRelic(i.item_key));
   const catalog = (shop ?? []).filter((s) => isRelic(s.key));
+  const [sel, setSel] = useState<{ key: string; name: string; icon: string; description: string | null; rarity: string; owned: boolean; price?: number; level?: number } | null>(null);
 
   return (
     <div className="space-y-3">
@@ -1021,14 +1035,21 @@ function RelicsSection() {
             {owned.map((it) => {
               const st = rarityStyle(it.rarity);
               return (
-                <div key={it.id} className={`relative overflow-hidden rounded-2xl p-3.5 ring-1 ${st.ring} ${st.bg} flex items-center gap-3`}>
-                  <div className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
-                  <span className="text-3xl">{it.icon}</span>
-                  <div className="min-w-0">
-                    <p className={`text-[13px] font-semibold ${st.text}`}>{it.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{it.description}</p>
+                <Clickable
+                  key={it.id}
+                  onClick={() => setSel({ key: it.item_key, name: it.name, icon: it.icon, description: it.description, rarity: it.rarity, owned: true })}
+                  className={`relative overflow-hidden rounded-2xl p-3.5 ring-1 ${st.ring} ${st.bg}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full bg-white/10 blur-2xl animate-pulse" />
+                    <span className="text-3xl">{it.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-[13px] font-semibold ${st.text}`}>{it.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{it.description}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
                   </div>
-                </div>
+                </Clickable>
               );
             })}
           </div>
@@ -1042,21 +1063,44 @@ function RelicsSection() {
             const has = owned.some((o) => o.item_key.includes(r.key));
             const st = rarityStyle(r.rarity);
             return (
-              <div key={r.key} className={`rounded-2xl p-3.5 ring-1 ${has ? st.ring : "ring-white/10"} ${has ? st.bg : "bg-white/[0.03]"} flex items-center gap-3`}>
-                <span className={`text-2xl ${has ? "" : "grayscale opacity-50"}`}>{has ? r.icon : "❔"}</span>
-                <div className="min-w-0 flex-1">
-                  <p className={`text-[12px] font-semibold ${has ? st.text : "text-muted-foreground"}`}>{has ? r.name : "?????"}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{has ? r.description : `Selada · requer nível ${r.required_level}`}</p>
+              <Clickable
+                key={r.key}
+                onClick={() => setSel({ key: r.key, name: has ? r.name : "?????", icon: has ? r.icon : "❔", description: r.description, rarity: r.rarity, owned: has, price: r.price, level: r.required_level })}
+                className={`rounded-2xl p-3.5 ring-1 ${has ? st.ring : "ring-white/10"} ${has ? st.bg : "bg-white/[0.03]"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`text-2xl ${has ? "" : "grayscale opacity-50"}`}>{has ? r.icon : "❔"}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-[12px] font-semibold ${has ? st.text : "text-muted-foreground"}`}>{has ? r.name : "?????"}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{has ? r.description : `Selada · requer nível ${r.required_level}`}</p>
+                  </div>
+                  <span className="text-[10px] text-amber-300 flex items-center gap-1"><Gem className="h-3 w-3" />{r.price}</span>
                 </div>
-                <span className="text-[10px] text-amber-300 flex items-center gap-1"><Gem className="h-3 w-3" />{r.price}</span>
-              </div>
+              </Clickable>
             );
           })}
         </div>
       </Panel>
+
+      <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.name ?? ""} sub={sel?.owned ? "Relíquia em sua posse" : "Registro selado"} icon={sel?.icon}>
+        {sel && (
+          <>
+            <ModalRow label="Raridade" value={sel.rarity} tone={rarityStyle(sel.rarity as never).text} />
+            {sel.price != null && <ModalRow label="Valor" value={<span className="text-amber-300">{sel.price} fragmentos</span>} />}
+            {sel.level != null && <ModalRow label="Requisito" value={`Nível ${sel.level}`} />}
+            <ModalBlock title="Passiva">
+              <p className="text-[12px] text-muted-foreground">{sel.owned ? (sel.description ?? "Efeito permanente ativo.") : "?????"}</p>
+            </ModalBlock>
+            <ModalBlock title="Lore">
+              <p className="text-[12px] text-muted-foreground italic">{sel.owned ? relicLore(sel.key) : "A história desta relíquia só se revela a quem a possui."}</p>
+            </ModalBlock>
+          </>
+        )}
+      </SysModal>
     </div>
   );
 }
+
 
 /* ───────── 10. Loja ───────── */
 
