@@ -934,6 +934,9 @@ function InventorySection() {
   const { data: items } = useInventory();
   const all = items ?? [];
   const [cat, setCat] = useState<string>("all");
+  const [sel, setSel] = useState<(typeof all)[number] | null>(null);
+  const [box, setBox] = useState<(typeof all)[number] | null>(null);
+  const [favs, setFavs] = useState<string[]>([]);
 
   const grouped = useMemo(() => {
     const map: Record<string, typeof all> = {};
@@ -945,6 +948,7 @@ function InventorySection() {
   }, [all]);
 
   const visible = cat === "all" ? all : (grouped[cat] ?? []);
+  const isBox = (it: { item_key: string }) => it.item_key.includes("box_");
 
   return (
     <div className="space-y-3">
@@ -968,18 +972,65 @@ function InventorySection() {
           {visible.map((item, i) => {
             const st = rarityStyle(item.rarity);
             return (
-              <div key={item.id} className={`glass rounded-2xl p-3 ring-1 ${st.ring} ${st.bg} animate-rise`} style={{ animationDelay: `${i * 25}ms` }}>
-                <div className="text-2xl mb-1.5">{item.icon}</div>
-                <p className={`text-[11px] font-semibold leading-tight ${st.text} line-clamp-2`}>{item.name}</p>
-                <p className="mt-1 text-[9px] uppercase tracking-wider text-muted-foreground/60">{item.rarity}</p>
-              </div>
+              <Clickable
+                key={item.id}
+                onClick={() => setSel(item)}
+                className={`relative glass rounded-2xl p-3 ring-1 ${st.ring} ${st.bg} animate-rise`}
+              >
+                <div style={{ animationDelay: `${i * 25}ms` }}>
+                  {favs.includes(item.id) && <span className="absolute top-2 right-2 text-[10px]">⭐</span>}
+                  <div className="text-2xl mb-1.5">{item.icon}</div>
+                  <p className={`text-[11px] font-semibold leading-tight ${st.text} line-clamp-2`}>{item.name}</p>
+                  <p className="mt-1 text-[9px] uppercase tracking-wider text-muted-foreground/60">{item.rarity}</p>
+                </div>
+              </Clickable>
             );
           })}
         </div>
       )}
+
+      <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.name ?? ""} sub={sel?.description ?? undefined} icon={sel?.icon}>
+        {sel && (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <ModalRow label="Raridade" value={sel.rarity} tone={rarityStyle(sel.rarity).text} />
+              <ModalRow label="Tipo" value={sel.kind} />
+              <ModalRow label="Quantidade" value="1x" />
+              <ModalRow label="Obtido em" value={new Date(sel.earned_at).toLocaleDateString("pt-BR")} />
+            </div>
+            <ModalBlock title="Origem">
+              <p className="text-[12px] text-muted-foreground">
+                Registro <span className="text-foreground/80">{sel.item_key}</span> materializado pelo Sistema.
+              </p>
+            </ModalBlock>
+            <div className="grid grid-cols-2 gap-2">
+              {isBox(sel) && (
+                <button
+                  onClick={() => { const b = sel; setSel(null); setBox(b); }}
+                  className="tap col-span-2 rounded-2xl py-2.5 text-[12px] font-semibold bg-electric/20 text-electric ring-hair hover:bg-electric/30 transition"
+                >
+                  ABRIR AGORA
+                </button>
+              )}
+              <button
+                onClick={() => setFavs((f) => (f.includes(sel.id) ? f.filter((x) => x !== sel.id) : [...f, sel.id]))}
+                className="tap rounded-2xl py-2.5 text-[12px] font-semibold bg-white/[0.05] ring-hair hover:text-foreground transition"
+              >
+                {favs.includes(sel.id) ? "★ Favorito" : "☆ Favoritar"}
+              </button>
+              <button onClick={() => setSel(null)} className="tap rounded-2xl py-2.5 text-[12px] font-semibold bg-white/[0.05] text-muted-foreground ring-hair transition">
+                Guardar
+              </button>
+            </div>
+          </>
+        )}
+      </SysModal>
+
+      <BoxOpening box={box} onClose={() => setBox(null)} />
     </div>
   );
 }
+
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
