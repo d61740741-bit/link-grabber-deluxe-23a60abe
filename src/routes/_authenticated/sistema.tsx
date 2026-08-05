@@ -891,6 +891,7 @@ function PassivesSection({ state }: { state: S }) {
   const passives = computePassives(state);
   const unlocked = passives.filter((p) => p.unlocked);
   const locked = passives.filter((p) => !p.unlocked);
+  const [sel, setSel] = useState<(typeof passives)[number] | null>(null);
 
   return (
     <div className="space-y-3">
@@ -901,12 +902,12 @@ function PassivesSection({ state }: { state: S }) {
         ) : (
           <div className="grid grid-cols-2 gap-2.5">
             {unlocked.map((p) => (
-              <div key={p.key} className="relative overflow-hidden rounded-2xl p-3 ring-1 ring-electric/30 bg-electric/[0.07]">
-                <div className="pointer-events-none absolute -top-8 -right-8 h-20 w-20 rounded-full bg-electric/20 blur-2xl" />
+              <Clickable key={p.key} onClick={() => setSel(p)} className="relative overflow-hidden rounded-2xl p-3 ring-1 ring-electric/30 bg-electric/[0.07]">
+                <div className="pointer-events-none absolute -top-8 -right-8 h-20 w-20 rounded-full bg-electric/20 blur-2xl animate-pulse" />
                 <p className="text-xl">{p.icon}</p>
                 <p className="text-[12px] font-semibold mt-1">{p.name}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{p.desc}</p>
-              </div>
+              </Clickable>
             ))}
           </div>
         )}
@@ -916,17 +917,36 @@ function PassivesSection({ state }: { state: S }) {
         <SectionTitle icon="🔒" title="Selos não revelados" />
         <div className="grid grid-cols-2 gap-2.5">
           {locked.map((p) => (
-            <div key={p.key} className="rounded-2xl p-3 ring-hair bg-white/[0.03]">
+            <Clickable key={p.key} onClick={() => setSel(p)} className="rounded-2xl p-3 ring-hair bg-white/[0.03]">
               <p className="text-xl opacity-50">{p.secret ? "❔" : p.icon}</p>
               <p className="text-[12px] font-semibold mt-1 text-muted-foreground">{p.secret ? "?????" : p.name}</p>
               <p className="text-[10px] text-muted-foreground/60 mt-0.5">{p.hint}</p>
-            </div>
+            </Clickable>
           ))}
         </div>
+      </Clickable-placeholder>
       </Panel>
+
+      <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.unlocked || !sel?.secret ? (sel?.name ?? "") : "?????"} sub={sel?.unlocked ? "Passiva ativa" : "Selo não revelado"} icon={sel?.secret && !sel?.unlocked ? "❔" : sel?.icon}>
+        {sel && (
+          <>
+            <ModalRow label="Estado" value={sel.unlocked ? "Ativa" : "Selada"} tone={sel.unlocked ? "text-emerald-300" : "text-muted-foreground"} />
+            <ModalRow label="Requisito" value={sel.hint} />
+            <ModalBlock title="Efeito">
+              <p className="text-[12px] text-muted-foreground">{sel.unlocked || !sel.secret ? sel.desc : "O Sistema ainda não revelou este poder."}</p>
+            </ModalBlock>
+            <ModalBlock title="Como evoluir">
+              <p className="text-[12px] text-muted-foreground">
+                Passivas evoluem sozinhas conforme os atributos ligados a ela sobem de nível. Registre ações reais nas áreas correspondentes para acelerar.
+              </p>
+            </ModalBlock>
+          </>
+        )}
+      </SysModal>
     </div>
   );
 }
+
 
 /* ───────── 8. Inventário ───────── */
 
