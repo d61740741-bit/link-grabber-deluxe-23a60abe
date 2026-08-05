@@ -1060,15 +1060,42 @@ function RelicsSection() {
 
 /* ───────── 10. Loja ───────── */
 
+const SHOP_CATS = [
+  { key: "all", label: "Tudo", icon: "🛒" },
+  { key: "artifact", label: "Artefatos", icon: "🗝️" },
+  { key: "relic", label: "Relíquias", icon: "🔮" },
+  { key: "boost", label: "Boosts", icon: "🔆" },
+  { key: "box", label: "Caixas", icon: "📦" },
+  { key: "cosmetic", label: "Cosméticos", icon: "🌌" },
+  { key: "legendary", label: "Lendários", icon: "👑" },
+  { key: "secret", label: "Secretos", icon: "❔" },
+] as const;
+
+function shopCat(it: { key: string; kind: string; rarity: string }) {
+  if (it.key.includes("box_")) return "box";
+  if (isRelic(it.key)) return "relic";
+  return it.kind;
+}
+
 function ShopSection({ state }: { state: S }) {
   const { data: items } = useShop();
   const buy = useBuyItem();
   const coins = state?.coins?.balance ?? 0;
   const level = state?.profile?.level ?? 1;
   const owned = state?.purchases ?? [];
+  const [cat, setCat] = useState<string>("all");
+  const [sel, setSel] = useState<(typeof visible)[number] | null>(null);
 
-  const visible = (items ?? []).filter((it) => it.required_level <= level + 5);
-  const sealed = (items ?? []).length - visible.length;
+  const all = items ?? [];
+  const visible = all.filter((it) => it.required_level <= level + 5);
+  const sealed = all.length - visible.length;
+
+  const filtered = visible.filter((it) => {
+    if (cat === "all") return true;
+    if (cat === "legendary") return it.rarity === "legendary" || it.rarity === "mythic";
+    if (cat === "secret") return it.required_level > level;
+    return shopCat(it) === cat;
+  });
 
   return (
     <div className="space-y-3">
@@ -1084,34 +1111,45 @@ function ShopSection({ state }: { state: S }) {
         </p>
       </Panel>
 
+      <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        {SHOP_CATS.map((c) => (
+          <Chip key={c.key} active={cat === c.key} onClick={() => setCat(c.key)}>
+            {c.icon} {c.label}
+          </Chip>
+        ))}
+      </div>
+
       <div className="grid grid-cols-2 gap-2.5">
-        {visible.map((it, i) => {
+        {filtered.map((it, i) => {
           const st = rarityStyle(it.rarity);
           const has = owned.includes(it.key);
           const canLevel = level >= it.required_level;
           const canAfford = coins >= it.price;
-          const disabled = has || !canLevel || !canAfford || buy.isPending;
           return (
-            <div key={it.key} className={`relative overflow-hidden glass rounded-2xl p-3.5 ring-1 ${st.ring} ${st.bg} animate-rise`} style={{ animationDelay: `${i * 30}ms` }}>
-              {it.rarity === "mythic" && <div className="pointer-events-none absolute -top-10 -right-10 h-24 w-24 rounded-full bg-rose-500/25 blur-2xl" />}
-              <div className="text-2xl">{canLevel ? it.icon : "🔒"}</div>
-              <p className={`mt-1.5 text-[12px] font-semibold leading-tight ${st.text}`}>{canLevel ? it.name : "?????"}</p>
-              <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{canLevel ? it.description : "Item selado pelo Sistema."}</p>
-              <p className="mt-1.5 text-[9px] uppercase tracking-wider text-muted-foreground/60">{it.rarity} · Lv {it.required_level}+</p>
-              <button
-                disabled={disabled}
-                onClick={() => buy.mutate(it.key)}
-                className={`tap mt-2 w-full rounded-xl py-1.5 text-[11px] font-semibold ring-hair transition flex items-center justify-center gap-1 ${
-                  has ? "bg-emerald-500/15 text-emerald-300"
-                    : disabled ? "bg-white/[0.03] text-muted-foreground/60"
-                    : "bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
-                }`}
-              >
-                {has ? <><Check className="h-3 w-3" /> Adquirido</> : <><Gem className="h-3 w-3" /> {it.price}</>}
-              </button>
-              {!has && !canLevel && <p className="mt-1 text-[9px] text-muted-foreground/70 text-center">Requer nível {it.required_level}</p>}
-              {!has && canLevel && !canAfford && <p className="mt-1 text-[9px] text-muted-foreground/70 text-center">Faltam {it.price - coins}</p>}
-            </div>
+            <Clickable
+              key={it.key}
+              onClick={() => canLevel && !has && setSel(it)}
+              className={`relative overflow-hidden glass rounded-2xl p-3.5 ring-1 ${st.ring} ${st.bg} animate-rise`}
+            >
+              <div style={{ animationDelay: `${i * 30}ms` }}>
+                {it.rarity === "mythic" && <div className="pointer-events-none absolute -top-10 -right-10 h-24 w-24 rounded-full bg-rose-500/25 blur-2xl animate-pulse" />}
+                <div className="text-2xl">{canLevel ? it.icon : "🔒"}</div>
+                <p className={`mt-1.5 text-[12px] font-semibold leading-tight ${st.text}`}>{canLevel ? it.name : "?????"}</p>
+                <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{canLevel ? it.description : "Item selado pelo Sistema."}</p>
+                <p className="mt-1.5 text-[9px] uppercase tracking-wider text-muted-foreground/60">{it.rarity} · Lv {it.required_level}+</p>
+                <div
+                  className={`mt-2 w-full rounded-xl py-1.5 text-[11px] font-semibold ring-hair transition flex items-center justify-center gap-1 ${
+                    has ? "bg-emerald-500/15 text-emerald-300"
+                      : !canLevel ? "bg-white/[0.03] text-muted-foreground/60"
+                      : "bg-amber-500/15 text-amber-300"
+                  }`}
+                >
+                  {has ? <><Check className="h-3 w-3" /> Adquirido</> : <><Gem className="h-3 w-3" /> {it.price}</>}
+                </div>
+                {!has && !canLevel && <p className="mt-1 text-[9px] text-muted-foreground/70 text-center">Requer nível {it.required_level}</p>}
+                {!has && canLevel && !canAfford && <p className="mt-1 text-[9px] text-muted-foreground/70 text-center">Faltam {it.price - coins}</p>}
+              </div>
+            </Clickable>
           );
         })}
         {sealed > 0 && (
@@ -1122,9 +1160,22 @@ function ShopSection({ state }: { state: S }) {
           </div>
         )}
       </div>
+
+      <PurchaseFlow
+        open={!!sel}
+        onClose={() => setSel(null)}
+        item={sel ? { key: sel.key, name: sel.name, icon: sel.icon, price: sel.price, rarity: sel.rarity, description: sel.description } : null}
+        balance={coins}
+        pending={buy.isPending}
+        allowQty={!!sel && (sel.key.includes("box_") || sel.kind === "boost")}
+        onConfirm={async (qty) => {
+          for (let i = 0; i < qty; i++) await buy.mutateAsync(sel!.key);
+        }}
+      />
     </div>
   );
 }
+
 
 /* ───────── 11. Bosses ───────── */
 
