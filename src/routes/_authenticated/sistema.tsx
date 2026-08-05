@@ -1128,60 +1128,87 @@ function ShopSection({ state }: { state: S }) {
 
 /* ───────── 11. Bosses ───────── */
 
+function useWeekCountdown() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const end = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + (7 - ((d.getDay() + 6) % 7)));
+    return d.getTime();
+  }, []);
+  const ms = Math.max(0, end - now);
+  const dd = Math.floor(ms / 86400000);
+  const hh = Math.floor((ms % 86400000) / 3600000);
+  const mm = Math.floor((ms % 3600000) / 60000);
+  const ss = Math.floor((ms % 60000) / 1000);
+  return `${dd}d ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+}
+
 function BossesSection() {
   const { data: boss } = useWeeklyBoss();
   const { data: history } = useBossHistory();
   const monthly = monthlyBoss(history ?? []);
   const defeated = (history ?? []).filter((b) => b.status === "completed");
+  const countdown = useWeekCountdown();
+  const [modal, setModal] = useState<string | null>(null);
+  const [sel, setSel] = useState<(typeof defeated)[number] | null>(null);
 
   return (
     <div className="space-y-3">
-      <Panel className="relative overflow-hidden">
-        <Particles />
-        <div className="relative">
-          <SectionTitle icon="👹" title="Boss da semana" />
-          {boss ? (
-            <>
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-3xl">{boss.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-semibold">{boss.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{boss.description}</p>
+      <Clickable onClick={() => setModal("weekly")}>
+        <Panel className="relative overflow-hidden">
+          <Particles />
+          <div className="relative">
+            <SectionTitle icon="👹" title="Boss da semana" sub={`Tempo restante · ${countdown}`} />
+            {boss ? (
+              <>
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-3xl">{boss.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold">{boss.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{boss.description}</p>
+                  </div>
+                  <span className={`shrink-0 text-[10px] px-2 py-1 rounded-full ring-hair ${boss.status === "completed" ? "text-emerald-300 bg-emerald-500/10" : "text-amber-300 bg-amber-500/10"}`}>
+                    {boss.status === "completed" ? "Derrotado" : `+${boss.xp_reward} XP`}
+                  </span>
                 </div>
-                <span className={`shrink-0 text-[10px] px-2 py-1 rounded-full ring-hair ${boss.status === "completed" ? "text-emerald-300 bg-emerald-500/10" : "text-amber-300 bg-amber-500/10"}`}>
-                  {boss.status === "completed" ? "Derrotado" : `+${boss.xp_reward} XP`}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {boss.objectives.map((o) => {
-                  const done = o.current >= o.target;
-                  return (
-                    <div key={o.key}>
-                      <div className="flex justify-between text-[11px] mb-1">
-                        <span className={done ? "text-emerald-300" : "text-foreground/80"}>{o.label}</span>
-                        <span className="text-muted-foreground">{o.current}/{o.target}</span>
+                <div className="space-y-2">
+                  {boss.objectives.map((o) => {
+                    const done = o.current >= o.target;
+                    return (
+                      <div key={o.key}>
+                        <div className="flex justify-between text-[11px] mb-1">
+                          <span className={done ? "text-emerald-300" : "text-foreground/80"}>{o.label}</span>
+                          <span className="text-muted-foreground">{o.current}/{o.target}</span>
+                        </div>
+                        <Bar pct={(o.current / Math.max(1, o.target)) * 100} className={done ? "bg-emerald-400" : "bg-gradient-to-r from-electric to-primary"} />
                       </div>
-                      <Bar pct={(o.current / Math.max(1, o.target)) * 100} className={done ? "bg-emerald-400" : "bg-gradient-to-r from-electric to-primary"} />
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          ) : (
-            <Hidden label="nenhum boss ativo" />
-          )}
-        </div>
-      </Panel>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <Hidden label="nenhum boss ativo" />
+            )}
+          </div>
+        </Panel>
+      </Clickable>
 
-      <Panel>
-        <SectionTitle icon="🌑" title="Boss mensal" sub="Derrote os bosses semanais do mês" />
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[12px] font-semibold">{monthly.defeated ? "Colosso derrotado" : "Colosso do Mês"}</span>
-          <span className="text-[11px] text-muted-foreground">{monthly.done}/{monthly.target}</span>
-        </div>
-        <Bar pct={monthly.pct} className={monthly.defeated ? "bg-emerald-400" : "bg-gradient-to-r from-rose-400 to-amber-400"} />
-        <p className="mt-2 text-[10px] text-muted-foreground/70">Recompensa acumulada: {monthly.reward.toLocaleString("pt-BR")} XP</p>
-      </Panel>
+      <Clickable onClick={() => setModal("monthly")}>
+        <Panel>
+          <SectionTitle icon="🌑" title="Boss mensal" sub="Derrote os bosses semanais do mês" />
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[12px] font-semibold">{monthly.defeated ? "Colosso derrotado" : "Colosso do Mês"}</span>
+            <span className="text-[11px] text-muted-foreground">{monthly.done}/{monthly.target}</span>
+          </div>
+          <Bar pct={monthly.pct} className={monthly.defeated ? "bg-emerald-400" : "bg-gradient-to-r from-rose-400 to-amber-400"} />
+          <p className="mt-2 text-[10px] text-muted-foreground/70">Recompensa acumulada: {monthly.reward.toLocaleString("pt-BR")} XP</p>
+        </Panel>
+      </Clickable>
 
       <Panel>
         <SectionTitle icon="🏆" title={`Bosses derrotados (${defeated.length})`} />
@@ -1190,28 +1217,111 @@ function BossesSection() {
         ) : (
           <div className="space-y-2">
             {defeated.map((b) => (
-              <div key={b.id} className="rounded-2xl p-3 ring-hair bg-emerald-500/[0.07] flex items-center gap-3">
-                <span className="text-xl">{b.icon ?? "👹"}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-semibold">{b.name}</p>
-                  <p className="text-[10px] text-muted-foreground">semana de {new Date(b.week_start).toLocaleDateString("pt-BR")}</p>
+              <Clickable key={b.id} onClick={() => setSel(b)} className="rounded-2xl p-3 ring-hair bg-emerald-500/[0.07]">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{b.icon ?? "👹"}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-semibold">{b.name}</p>
+                    <p className="text-[10px] text-muted-foreground">semana de {new Date(b.week_start).toLocaleDateString("pt-BR")}</p>
+                  </div>
+                  <span className="text-[10px] text-emerald-300">+{b.xp_reward} XP</span>
                 </div>
-                <span className="text-[10px] text-emerald-300">+{b.xp_reward} XP</span>
-              </div>
+              </Clickable>
             ))}
           </div>
         )}
       </Panel>
 
-      <Panel className="text-center">
-        <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Próximo boss</p>
-        <p className="text-3xl mt-2 opacity-60">❔</p>
-        <p className="mt-1"><Hidden /></p>
-        <p className="text-[10px] text-muted-foreground/60 mt-1">Revelado no início da próxima semana</p>
-      </Panel>
+      <Clickable onClick={() => setModal("next")}>
+        <Panel className="text-center">
+          <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Próximo boss</p>
+          <p className="text-3xl mt-2 opacity-60">❔</p>
+          <p className="mt-1"><Hidden /></p>
+          <p className="text-[10px] text-muted-foreground/60 mt-1">Revelado em {countdown}</p>
+        </Panel>
+      </Clickable>
+
+      <SysModal open={modal === "weekly"} onClose={() => setModal(null)} title={boss?.name ?? "Nenhum boss ativo"} sub={boss?.description ?? undefined} icon={boss?.icon ?? "👹"}>
+        {boss ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <ModalRow label="Recompensa" value={`+${boss.xp_reward} XP`} tone="text-amber-300" />
+              <ModalRow label="Tempo restante" value={countdown} />
+              <ModalRow label="Status" value={boss.status === "completed" ? "Derrotado" : "Em combate"} />
+              <ModalRow label="Semana" value={new Date(boss.week_start).toLocaleDateString("pt-BR")} />
+            </div>
+            <ModalBlock title="Objetivos">
+              <div className="space-y-2">
+                {boss.objectives.map((o) => (
+                  <div key={o.key}>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span>{o.label}</span>
+                      <span className="text-muted-foreground">{o.current}/{o.target}</span>
+                    </div>
+                    <Bar pct={(o.current / Math.max(1, o.target)) * 100} className={o.current >= o.target ? "bg-emerald-400" : "bg-electric"} />
+                  </div>
+                ))}
+              </div>
+            </ModalBlock>
+          </>
+        ) : <Hidden />}
+      </SysModal>
+
+      <SysModal open={modal === "monthly"} onClose={() => setModal(null)} title="Colosso do Mês" sub="Formado pelos bosses semanais" icon="🌑">
+        <div className="grid grid-cols-2 gap-2">
+          <ModalRow label="Progresso" value={`${monthly.done}/${monthly.target}`} />
+          <ModalRow label="Conclusão" value={`${monthly.pct}%`} tone="text-electric" />
+          <ModalRow label="Recompensa" value={`${monthly.reward.toLocaleString("pt-BR")} XP`} tone="text-amber-300" />
+          <ModalRow label="Estado" value={monthly.defeated ? "Derrotado" : "Vivo"} tone={monthly.defeated ? "text-emerald-300" : "text-rose-300"} />
+        </div>
+        <ModalBlock title="Histórico do mês">
+          <div className="space-y-1.5">
+            {(history ?? []).slice(0, 8).map((b) => (
+              <div key={b.id} className="flex items-center justify-between rounded-2xl bg-white/[0.03] ring-hair px-3 py-2">
+                <span className="text-[11px] truncate">{b.icon} {b.name}</span>
+                <span className={`text-[10px] ${b.status === "completed" ? "text-emerald-300" : "text-muted-foreground"}`}>{b.status}</span>
+              </div>
+            ))}
+          </div>
+        </ModalBlock>
+      </SysModal>
+
+      <SysModal open={modal === "next"} onClose={() => setModal(null)} title="?????" sub="Registro selado pelo Sistema" icon="❔">
+        <ModalRow label="Revelação em" value={countdown} />
+        <ModalBlock title="Leitura parcial">
+          <p className="text-[12px] text-muted-foreground">
+            O Sistema já detecta a assinatura do próximo desafio, mas se recusa a nomeá-lo. Continue evoluindo — quanto maior sua sincronia, mais forte será o boss e maior a recompensa.
+          </p>
+        </ModalBlock>
+      </SysModal>
+
+      <SysModal open={!!sel} onClose={() => setSel(null)} title={sel?.name ?? ""} sub={sel?.description ?? undefined} icon={sel?.icon ?? "👹"}>
+        {sel && (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <ModalRow label="Recompensa" value={`+${sel.xp_reward} XP`} tone="text-amber-300" />
+              <ModalRow label="Semana" value={new Date(sel.week_start).toLocaleDateString("pt-BR")} />
+            </div>
+            <ModalBlock title="Objetivos cumpridos">
+              <div className="space-y-2">
+                {(sel.objectives ?? []).map((o) => (
+                  <div key={o.key}>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span>{o.label}</span>
+                      <span className="text-muted-foreground">{o.current}/{o.target}</span>
+                    </div>
+                    <Bar pct={(o.current / Math.max(1, o.target)) * 100} className="bg-emerald-400" />
+                  </div>
+                ))}
+              </div>
+            </ModalBlock>
+          </>
+        )}
+      </SysModal>
     </div>
   );
 }
+
 
 /* ───────── 12. Conquistas ───────── */
 
