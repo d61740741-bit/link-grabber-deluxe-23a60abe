@@ -17,6 +17,9 @@ import {
   monthlyBoss, achievementTier, TIER_STYLE, INV_CATEGORIES, inventoryCategory, isRelic,
   type AchvTier,
 } from "@/lib/system";
+import { useLifeScoreHistory } from "@/lib/life-state";
+import { useXpHistory, usePurchases, xpBuckets, xpSeries, xpBySource, useEquipTitle } from "@/lib/system-data";
+import { SysModal, Clickable, ModalRow, ModalBlock, Spark, PurchaseFlow, BoxOpening } from "@/components/sistema/system-ui";
 
 export const Route = createFileRoute("/_authenticated/sistema")({
   component: SistemaPage,
