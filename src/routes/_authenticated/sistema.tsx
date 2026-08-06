@@ -39,7 +39,7 @@ const SECTIONS = [
   { key: "visao", label: "Visão Geral", icon: Sparkles },
   { key: "status", label: "Status", icon: Activity },
   { key: "atributos", label: "Atributos", icon: Zap },
-  { key: "classe", label: "Classe", icon: Swords },
+  { key: "titulo", label: "Título", icon: Crown },
   { key: "titulo", label: "Título", icon: Crown },
   { key: "rank", label: "Rank", icon: Star },
   { key: "passivas", label: "Passivas", icon: Eye },
