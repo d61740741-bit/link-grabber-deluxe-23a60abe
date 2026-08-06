@@ -416,26 +416,24 @@ function Overview({ state }: { state: S }) {
         </ModalBlock>
       </SysModal>
 
-      <SysModal open={modal === "classe"} onClose={close} title={state?.class?.name ?? "Sem classe"} sub={state?.class?.tagline ?? "Evolua atributos para despertar"} icon={state?.class?.icon ?? "❔"}>
-        {state?.class ? (
-          <>
-            <ModalRow label="Atributo principal" value={state.class.primary_attr} />
-            {state.class.secondary_attr && <ModalRow label="Secundário" value={state.class.secondary_attr} />}
-            <ModalBlock title="Passivas da classe">
-              <ul className="space-y-1">
-                {(state.class.perks ?? []).map((pk) => (
-                  <li key={pk} className="text-[12px] text-muted-foreground flex items-center gap-1.5"><Check className="h-3 w-3 text-electric" />{pk}</li>
-                ))}
-              </ul>
-            </ModalBlock>
-            <ModalBlock title="Próxima evolução">
-              <p className="text-[12px] text-muted-foreground">Especialização revelada ao atingir <span className="tracking-[0.2em]">?????</span></p>
-            </ModalBlock>
-          </>
-        ) : (
-          <Hidden label="nenhuma classe desperta" />
-        )}
+      <SysModal open={modal === "status"} onClose={close} title={sysStatus.tier.name} sub="Status do Sistema" icon={sysStatus.tier.icon}>
+        <p className="text-[12px] text-muted-foreground">{sysStatus.tier.desc}</p>
+        <ModalRow label="Compatibilidade" value={`${sysStatus.pct}%`} />
+        <ModalRow label="Estágio" value={`${sysStatus.index + 1}º registro`} />
+        <ModalBlock title="Próximo registro">
+          {sysStatus.next ? (
+            <>
+              <p className="text-[12px] text-muted-foreground">
+                {sysStatus.next.hidden ? <span className="tracking-[0.3em]">?????</span> : sysStatus.next.name} · liberado em {sysStatus.next.at}%
+              </p>
+              <div className="mt-2"><Bar pct={sysStatus.progressToNext} className="bg-gradient-to-r from-electric to-primary" /></div>
+            </>
+          ) : (
+            <p className="text-[12px] text-muted-foreground">Registro final atingido.</p>
+          )}
+        </ModalBlock>
       </SysModal>
+
 
       <SysModal open={modal === "titulo"} onClose={close} title={currentTitle?.title_name ?? "Sem título"} sub={currentTitle?.description ?? "Conquiste títulos evoluindo"} icon={currentTitle?.icon ?? "👑"}>
         {currentTitle && (
