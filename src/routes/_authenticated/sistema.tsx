@@ -163,7 +163,7 @@ function SistemaPage() {
           {section === "visao" && <Overview state={state} />}
           {section === "status" && <StatusSection state={state} />}
           {section === "atributos" && <AttributesSection state={state} />}
-          {section === "classe" && <ClassSection state={state} />}
+          
           {section === "titulo" && <TitleSection state={state} />}
           {section === "rank" && <RankSection state={state} />}
           {section === "passivas" && <PassivesSection state={state} />}
