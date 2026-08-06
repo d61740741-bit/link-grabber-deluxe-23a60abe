@@ -233,3 +233,60 @@ export function inventoryCategory(item: { kind: string; item_key: string }) {
   if (item.item_key.includes("box_")) return "box";
   return item.kind;
 }
+
+/* ─────────────── Status do Sistema ─────────────── */
+// Substitui o conceito de classe fixa: o Status representa a evolução e a
+// compatibilidade do usuário com o Sistema. Os estágios avançados permanecem
+// ocultos até serem alcançados.
+
+export type StatusTier = {
+  key: string;
+  name: string;
+  at: number;
+  icon: string;
+  aura: string;
+  ring: string;
+  desc: string;
+  hidden?: boolean;
+};
+
+export const STATUS_TIERS: StatusTier[] = [
+  { key: "observado",    name: "Observado",    at: 0,  icon: "👁️", aura: "text-slate-200",   ring: "ring-slate-400/30",   desc: "O Sistema registrou sua existência. Nada mais." },
+  { key: "reconhecido",  name: "Reconhecido",  at: 15, icon: "📡", aura: "text-sky-300",     ring: "ring-sky-400/40",     desc: "Seus padrões deixaram de ser ruído. Você foi catalogado." },
+  { key: "compativel",   name: "Compatível",   at: 30, icon: "🧬", aura: "text-cyan-300",    ring: "ring-cyan-400/40",    desc: "Sua constância é compatível com os protocolos do Sistema." },
+  { key: "sincronizado", name: "Sincronizado", at: 50, icon: "🔗", aura: "text-violet-300",  ring: "ring-violet-400/50",  desc: "A ligação está estável. O Sistema responde às suas ações." },
+  { key: "executor",     name: "Executor",     at: 70, icon: "⚔️", aura: "text-fuchsia-300", ring: "ring-fuchsia-400/50", desc: "Você deixou de receber ordens. Agora executa." },
+  { key: "soberano",     name: "Soberano",     at: 86, icon: "👑", aura: "text-amber-300",   ring: "ring-amber-400/60",   desc: "Registro selado. O Sistema reconhece sua autoridade.", hidden: true },
+  { key: "anomalia",     name: "Anomalia",     at: 97, icon: "✴️", aura: "text-white",       ring: "ring-rose-400/60",    desc: "Fora de qualquer previsão. O Sistema não sabe classificá-lo.", hidden: true },
+];
+
+export type StatusState = {
+  tier: StatusTier;
+  index: number;
+  pct: number;
+  next: StatusTier | null;
+  progressToNext: number;
+  /** Etapas visíveis: reveladas ou a próxima ainda oculta como ????? */
+  ladder: Array<{ tier: StatusTier; reached: boolean; revealed: boolean }>;
+};
+
+export function computeStatus(state?: CharacterState | null): StatusState {
+  const pct = computeSync(state).pct;
+  let index = 0;
+  STATUS_TIERS.forEach((t, i) => {
+    if (pct >= t.at) index = i;
+  });
+  const tier = STATUS_TIERS[index];
+  const next = STATUS_TIERS[index + 1] ?? null;
+  const span = next ? next.at - tier.at : 1;
+  const progressToNext = next ? Math.max(0, Math.min(100, Math.round(((pct - tier.at) / span) * 100))) : 100;
+
+  const ladder = STATUS_TIERS.map((t, i) => ({
+    tier: t,
+    reached: i <= index,
+    // revela: já alcançado, ou não-oculto e imediatamente à frente do atual
+    revealed: i <= index || (!t.hidden && i <= index + 1),
+  }));
+
+  return { tier, index, pct, next, progressToNext, ladder };
+}

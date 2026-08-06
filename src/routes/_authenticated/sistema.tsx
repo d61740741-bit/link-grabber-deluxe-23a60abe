@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Sparkles, Gem, Shield, ShoppingBag, Swords, Check, Lock, Crown,
+  Sparkles, Gem, Shield, ShoppingBag, Check, Crown,
   Activity, Zap, Trophy, Boxes, History, Coins, Star, Eye, ChevronRight,
 } from "lucide-react";
 import {
-  useCharacter, useShop, useBuyItem, useSetClass,
-  attributeProgress, classUnlocked, type Attribute, type CharacterState,
+  useCharacter, useShop, useBuyItem,
+  attributeProgress, type Attribute, type CharacterState,
 } from "@/lib/rpg";
 import {
   rarityStyle, useInventory, useTimeline, useTitles, useWeeklyBoss,
@@ -15,8 +15,10 @@ import { RANKS, computeRank } from "@/lib/ranks";
 import {
   attrMeta, computeSync, computePassives, useAchievementsList, useBossHistory,
   monthlyBoss, achievementTier, TIER_STYLE, INV_CATEGORIES, inventoryCategory, isRelic,
+  computeStatus, STATUS_TIERS,
   type AchvTier,
 } from "@/lib/system";
+import { StatusUnlockOverlay, useStatusUnlock } from "@/components/sistema/status-unlock";
 import { useLifeScoreHistory } from "@/lib/life-state";
 import { useXpHistory, usePurchases, xpBuckets, xpSeries, xpBySource, useEquipTitle } from "@/lib/system-data";
 import { SysModal, Clickable, ModalRow, ModalBlock, Spark, PurchaseFlow, BoxOpening } from "@/components/sistema/system-ui";
@@ -39,7 +41,6 @@ const SECTIONS = [
   { key: "visao", label: "Visão Geral", icon: Sparkles },
   { key: "status", label: "Status", icon: Activity },
   { key: "atributos", label: "Atributos", icon: Zap },
-  { key: "classe", label: "Classe", icon: Swords },
   { key: "titulo", label: "Título", icon: Crown },
   { key: "rank", label: "Rank", icon: Star },
   { key: "passivas", label: "Passivas", icon: Eye },
@@ -164,7 +165,7 @@ function SistemaPage() {
           {section === "visao" && <Overview state={state} />}
           {section === "status" && <StatusSection state={state} />}
           {section === "atributos" && <AttributesSection state={state} />}
-          {section === "classe" && <ClassSection state={state} />}
+          
           {section === "titulo" && <TitleSection state={state} />}
           {section === "rank" && <RankSection state={state} />}
           {section === "passivas" && <PassivesSection state={state} />}
@@ -198,6 +199,7 @@ function Overview({ state }: { state: S }) {
   const rank = RANKS.find((r) => r.id === (p?.current_rank ?? "beginner")) ?? RANKS[0];
   const coins = state?.coins?.balance ?? 0;
   const [modal, setModal] = useState<string | null>(null);
+  const sysStatus = computeStatus(state);
   const close = () => setModal(null);
 
   const buckets = xpBuckets(xpRows ?? []);
@@ -243,7 +245,7 @@ function Overview({ state }: { state: S }) {
 
       <div className="grid grid-cols-2 gap-2.5">
         <Tile icon={rank.icon} label="Rank" value={rank.name} onClick={() => setModal("rank")} />
-        <Tile icon={state?.class?.icon ?? "❔"} label="Classe" value={state?.class?.name ?? "Sem classe"} onClick={() => setModal("classe")} />
+        <Tile icon={sysStatus.tier.icon} label="Status do Sistema" value={sysStatus.tier.name} onClick={() => setModal("status")} />
         <Tile icon="👑" label="Título" value={p?.equipped_title ? p.equipped_title.replace(/_/g, " ") : "—"} onClick={() => setModal("titulo")} />
         <Tile icon="💠" label="Life Score" value={String(p?.life_score ?? 0)} onClick={() => setModal("score")} />
         <Tile icon="🔥" label="Sequência" value={`${p?.streak_days ?? 0} dias`} onClick={() => setModal("streak")} />
@@ -414,26 +416,24 @@ function Overview({ state }: { state: S }) {
         </ModalBlock>
       </SysModal>
 
-      <SysModal open={modal === "classe"} onClose={close} title={state?.class?.name ?? "Sem classe"} sub={state?.class?.tagline ?? "Evolua atributos para despertar"} icon={state?.class?.icon ?? "❔"}>
-        {state?.class ? (
-          <>
-            <ModalRow label="Atributo principal" value={state.class.primary_attr} />
-            {state.class.secondary_attr && <ModalRow label="Secundário" value={state.class.secondary_attr} />}
-            <ModalBlock title="Passivas da classe">
-              <ul className="space-y-1">
-                {(state.class.perks ?? []).map((pk) => (
-                  <li key={pk} className="text-[12px] text-muted-foreground flex items-center gap-1.5"><Check className="h-3 w-3 text-electric" />{pk}</li>
-                ))}
-              </ul>
-            </ModalBlock>
-            <ModalBlock title="Próxima evolução">
-              <p className="text-[12px] text-muted-foreground">Especialização revelada ao atingir <span className="tracking-[0.2em]">?????</span></p>
-            </ModalBlock>
-          </>
-        ) : (
-          <Hidden label="nenhuma classe desperta" />
-        )}
+      <SysModal open={modal === "status"} onClose={close} title={sysStatus.tier.name} sub="Status do Sistema" icon={sysStatus.tier.icon}>
+        <p className="text-[12px] text-muted-foreground">{sysStatus.tier.desc}</p>
+        <ModalRow label="Compatibilidade" value={`${sysStatus.pct}%`} />
+        <ModalRow label="Estágio" value={`${sysStatus.index + 1}º registro`} />
+        <ModalBlock title="Próximo registro">
+          {sysStatus.next ? (
+            <>
+              <p className="text-[12px] text-muted-foreground">
+                {sysStatus.next.hidden ? <span className="tracking-[0.3em]">?????</span> : sysStatus.next.name} · liberado em {sysStatus.next.at}%
+              </p>
+              <div className="mt-2"><Bar pct={sysStatus.progressToNext} className="bg-gradient-to-r from-electric to-primary" /></div>
+            </>
+          ) : (
+            <p className="text-[12px] text-muted-foreground">Registro final atingido.</p>
+          )}
+        </ModalBlock>
       </SysModal>
+
 
       <SysModal open={modal === "titulo"} onClose={close} title={currentTitle?.title_name ?? "Sem título"} sub={currentTitle?.description ?? "Conquiste títulos evoluindo"} icon={currentTitle?.icon ?? "👑"}>
         {currentTitle && (
@@ -531,6 +531,8 @@ function Tile({ icon, label, value, onClick }: { icon: string; label: string; va
 
 function StatusSection({ state }: { state: S }) {
   const sync = computeSync(state);
+  const status = computeStatus(state);
+  const { unlocked, dismiss } = useStatusUnlock(status.tier, status.index);
   const prev = useRef(sync.pct);
   const [pulse, setPulse] = useState(false);
   useEffect(() => {
@@ -545,24 +547,77 @@ function StatusSection({ state }: { state: S }) {
 
   return (
     <div className="space-y-3">
-      <Panel className={`relative overflow-hidden text-center ${pulse ? "ring-1 ring-electric/60" : ""}`}>
+      {unlocked && <StatusUnlockOverlay tier={unlocked} onDone={dismiss} />}
+
+      <Panel className={`relative overflow-hidden text-center ring-1 ${status.tier.ring} ${pulse ? "ring-electric/60" : ""}`}>
         <Particles />
-        <div className="relative py-4">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Status do Sistema</p>
-          <p className={`mt-3 text-6xl font-semibold tracking-tight ${sync.aura} ${pulse ? "animate-scale-in" : ""}`}>{sync.pct}%</p>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground mt-1">Sincronia</p>
-          <p className={`mt-3 inline-block rounded-full px-3 py-1 text-[11px] ring-hair bg-white/[0.04] ${sync.aura}`}>{sync.stage}</p>
-          <div className="mt-4 px-6">
-            <Bar pct={sync.pct} className="bg-gradient-to-r from-electric via-primary to-amber-400" />
+        <div className="relative py-5">
+          <p className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground">Status do Sistema</p>
+          <p className="mt-4 text-6xl animate-scale-in">{status.tier.icon}</p>
+          <p className={`mt-2 text-3xl font-semibold tracking-tight ${status.tier.aura}`}>{status.tier.name}</p>
+          <p className="mt-2 max-w-xs mx-auto text-[12px] text-muted-foreground">{status.tier.desc}</p>
+
+          <div className="mt-5 px-6">
+            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+              <span>Compatibilidade</span>
+              <span>{status.pct}%</span>
+            </div>
+            <Bar pct={status.pct} className="bg-gradient-to-r from-electric via-primary to-amber-400" />
           </div>
+
           <p className="mt-4 text-[11px] text-muted-foreground">
-            Próxima evolução em {sync.nextAt}%: {sync.nextStage ? <span className="tracking-[0.2em] text-muted-foreground/60">?????</span> : "máximo atingido"}
+            {status.next ? (
+              <>
+                Próximo registro em {status.next.at}%:{" "}
+                {status.next.hidden
+                  ? <span className="tracking-[0.3em] text-muted-foreground/60">?????</span>
+                  : <span className={status.next.aura}>{status.next.name}</span>}
+              </>
+            ) : (
+              "Registro final atingido."
+            )}
           </p>
         </div>
       </Panel>
 
       <Panel>
-        <SectionTitle icon="🧬" title="Leitura do Sistema" sub="Fatores que alteram sua sincronia" />
+        <SectionTitle icon="🧭" title="Linha de evolução" sub="O Sistema revela um registro por vez" />
+        <div className="space-y-2">
+          {status.ladder.map(({ tier, reached, revealed }, i) => {
+            const isCurrent = i === status.index;
+            return (
+              <div
+                key={tier.key}
+                className={`relative flex items-center gap-3 rounded-2xl p-3 ring-1 transition ${
+                  isCurrent ? `${tier.ring} bg-white/[0.05]` : reached ? "ring-hair bg-white/[0.03]" : "ring-hair bg-white/[0.02] opacity-70"
+                }`}
+              >
+                <span className={`text-xl ${revealed ? "" : "grayscale opacity-60"}`}>{revealed ? tier.icon : "🔒"}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className={`text-[13px] font-semibold ${revealed ? (reached ? tier.aura : "") : "tracking-[0.3em] text-muted-foreground/60"}`}>
+                      {revealed ? tier.name : "?????"}
+                    </p>
+                    {isCurrent && <span className="text-[9px] rounded-full bg-electric/20 text-electric px-2 py-0.5">Atual</span>}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {reached ? tier.desc : revealed ? `Liberado em ${tier.at}% de compatibilidade` : "Registro selado pelo Sistema."}
+                  </p>
+                </div>
+                {reached && <Check className="h-4 w-4 text-emerald-300" />}
+              </div>
+            );
+          })}
+          {STATUS_TIERS.length === status.ladder.length && (
+            <p className="pt-1 text-center text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50">
+              existem registros além destes
+            </p>
+          )}
+        </div>
+      </Panel>
+
+      <Panel>
+        <SectionTitle icon="🧬" title="Leitura do Sistema" sub="Fatores que alteram sua compatibilidade" />
         <ul className="text-[12px] text-muted-foreground space-y-1.5">
           <li>⭐ Nível do personagem — até 30%</li>
           <li>🔥 Sequência de dias ativos — até 20%</li>
@@ -586,6 +641,7 @@ function StatusSection({ state }: { state: S }) {
     </div>
   );
 }
+
 
 /* ───────── 3. Atributos ───────── */
 
@@ -648,111 +704,8 @@ function MiniBox({ label, value }: { label: string; value: string }) {
   );
 }
 
-/* ───────── 4. Classe ───────── */
+/* ───────── 4. (Classe removida — substituída pelo Status do Sistema) ───────── */
 
-const CLASS_LORE: Record<string, string> = {};
-
-function ClassSection({ state }: { state: S }) {
-  const setClass = useSetClass();
-  const attrs = (state?.attributes ?? []) as Attribute[];
-  const classes = state?.classes ?? [];
-  const current = state?.profile?.class_key ?? null;
-  const [flash, setFlash] = useState<string | null>(null);
-
-  const ordered = useMemo(() => {
-    return [...classes].sort((a, b) => {
-      const ua = classUnlocked(a, attrs).unlocked ? 0 : 1;
-      const ub = classUnlocked(b, attrs).unlocked ? 0 : 1;
-      return ua - ub || a.sort_order - b.sort_order;
-    });
-  }, [classes, attrs]);
-
-  const active = classes.find((c) => c.key === current) ?? null;
-  const next = ordered.find((c) => !classUnlocked(c, attrs).unlocked) ?? null;
-
-  return (
-    <div className="space-y-3">
-      <Panel className="relative overflow-hidden text-center">
-        <Particles />
-        <div className="relative py-3">
-          <p className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">Classe atual</p>
-          <p className="text-5xl mt-2">{active?.icon ?? "❔"}</p>
-          <p className="text-lg font-semibold mt-1">{active?.name ?? "Nenhuma classe desperta"}</p>
-          <p className="text-[12px] text-muted-foreground">{active?.tagline ?? "Evolua seus atributos para despertar uma classe."}</p>
-          {next && (
-            <p className="mt-3 text-[11px] text-muted-foreground">
-              Próxima classe: <span className="tracking-[0.2em] text-muted-foreground/60">?????</span>
-            </p>
-          )}
-        </div>
-      </Panel>
-
-      {ordered.map((c, i) => {
-        const { unlocked, reqs } = classUnlocked(c, attrs);
-        const isActive = current === c.key;
-        return (
-          <div
-            key={c.key}
-            className={`relative glass rounded-3xl p-4 overflow-hidden animate-rise ${isActive ? "ring-1 ring-electric/60" : unlocked ? "" : "opacity-70"} ${flash === c.key ? "animate-scale-in ring-1 ring-amber-300/70" : ""}`}
-            style={{ animationDelay: `${i * 50}ms` }}
-          >
-            {unlocked && <div className="pointer-events-none absolute -top-14 -right-10 h-32 w-32 rounded-full bg-electric/15 blur-3xl" />}
-            <div className="relative flex items-start gap-3">
-              <span className={`text-3xl ${unlocked ? "" : "grayscale opacity-60"}`}>{unlocked ? c.icon : "🔒"}</span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-[15px] font-semibold">{unlocked ? c.name : "?????"}</p>
-                  {isActive && <span className="text-[9px] rounded-full bg-electric/20 text-electric px-2 py-0.5">Ativa</span>}
-                  {!unlocked && <Lock className="h-3 w-3 text-muted-foreground" />}
-                </div>
-                <p className="text-[12px] text-muted-foreground">{unlocked ? c.tagline : "Requisitos de atributo não cumpridos."}</p>
-                <p className="mt-1.5 text-[11px] text-muted-foreground/80 italic">
-                  {unlocked ? (CLASS_LORE[c.key] ?? `Uma linhagem forjada em ${c.primary_attr}.`) : "História selada pelo Sistema."}
-                </p>
-
-                {reqs.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {reqs.map(([k, v]) => {
-                      const have = attrs.find((a) => a.key === k)?.level ?? 0;
-                      const ok = have >= Number(v);
-                      return (
-                        <span key={k} className={`text-[10px] rounded-full px-2 py-0.5 ring-hair ${ok ? "bg-emerald-500/15 text-emerald-300" : "bg-white/[0.04] text-muted-foreground"}`}>
-                          {k} Lv {have}/{v}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {(c.perks ?? []).length > 0 && (
-                  <ul className="mt-2 space-y-0.5">
-                    {c.perks.map((pk) => (
-                      <li key={pk} className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                        <Check className="h-3 w-3 text-electric" /> {unlocked ? pk : "?????"}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <button
-                  disabled={!unlocked || isActive || setClass.isPending}
-                  onClick={() => { setFlash(c.key); setTimeout(() => setFlash(null), 1200); setClass.mutate(c.key); }}
-                  className={`tap mt-3 w-full rounded-2xl py-2 text-[12px] font-semibold ring-hair transition ${
-                    isActive ? "bg-white/[0.04] text-muted-foreground"
-                      : unlocked ? "bg-electric/20 text-electric hover:bg-electric/30"
-                      : "bg-white/[0.03] text-muted-foreground/60"
-                  }`}
-                >
-                  {isActive ? "Classe ativa" : unlocked ? "Despertar classe" : "Bloqueada"}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 /* ───────── 5. Título ───────── */
 
