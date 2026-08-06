@@ -242,7 +242,7 @@ function Overview({ state }: { state: S }) {
 
       <div className="grid grid-cols-2 gap-2.5">
         <Tile icon={rank.icon} label="Rank" value={rank.name} onClick={() => setModal("rank")} />
-        <Tile icon={status.tier.icon} label="Status do Sistema" value={status.tier.name} onClick={() => setModal("status")} />
+        <Tile icon={sysStatus.tier.icon} label="Status do Sistema" value={sysStatus.tier.name} onClick={() => setModal("status")} />
         <Tile icon="👑" label="Título" value={p?.equipped_title ? p.equipped_title.replace(/_/g, " ") : "—"} onClick={() => setModal("titulo")} />
         <Tile icon="💠" label="Life Score" value={String(p?.life_score ?? 0)} onClick={() => setModal("score")} />
         <Tile icon="🔥" label="Sequência" value={`${p?.streak_days ?? 0} dias`} onClick={() => setModal("streak")} />
