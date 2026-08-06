@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Sparkles, Gem, Shield, ShoppingBag, Swords, Check, Lock, Crown,
+  Sparkles, Gem, Shield, ShoppingBag, Check, Crown,
   Activity, Zap, Trophy, Boxes, History, Coins, Star, Eye, ChevronRight,
 } from "lucide-react";
 import {
-  useCharacter, useShop, useBuyItem, useSetClass,
-  attributeProgress, classUnlocked, type Attribute, type CharacterState,
+  useCharacter, useShop, useBuyItem,
+  attributeProgress, type Attribute, type CharacterState,
 } from "@/lib/rpg";
 import {
   rarityStyle, useInventory, useTimeline, useTitles, useWeeklyBoss,
