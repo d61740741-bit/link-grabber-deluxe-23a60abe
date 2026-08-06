@@ -531,6 +531,8 @@ function Tile({ icon, label, value, onClick }: { icon: string; label: string; va
 
 function StatusSection({ state }: { state: S }) {
   const sync = computeSync(state);
+  const status = computeStatus(state);
+  const { unlocked, dismiss } = useStatusUnlock(status.tier, status.index);
   const prev = useRef(sync.pct);
   const [pulse, setPulse] = useState(false);
   useEffect(() => {
@@ -545,24 +547,77 @@ function StatusSection({ state }: { state: S }) {
 
   return (
     <div className="space-y-3">
-      <Panel className={`relative overflow-hidden text-center ${pulse ? "ring-1 ring-electric/60" : ""}`}>
+      {unlocked && <StatusUnlockOverlay tier={unlocked} onDone={dismiss} />}
+
+      <Panel className={`relative overflow-hidden text-center ring-1 ${status.tier.ring} ${pulse ? "ring-electric/60" : ""}`}>
         <Particles />
-        <div className="relative py-4">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Status do Sistema</p>
-          <p className={`mt-3 text-6xl font-semibold tracking-tight ${sync.aura} ${pulse ? "animate-scale-in" : ""}`}>{sync.pct}%</p>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground mt-1">Sincronia</p>
-          <p className={`mt-3 inline-block rounded-full px-3 py-1 text-[11px] ring-hair bg-white/[0.04] ${sync.aura}`}>{sync.stage}</p>
-          <div className="mt-4 px-6">
-            <Bar pct={sync.pct} className="bg-gradient-to-r from-electric via-primary to-amber-400" />
+        <div className="relative py-5">
+          <p className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground">Status do Sistema</p>
+          <p className="mt-4 text-6xl animate-scale-in">{status.tier.icon}</p>
+          <p className={`mt-2 text-3xl font-semibold tracking-tight ${status.tier.aura}`}>{status.tier.name}</p>
+          <p className="mt-2 max-w-xs mx-auto text-[12px] text-muted-foreground">{status.tier.desc}</p>
+
+          <div className="mt-5 px-6">
+            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+              <span>Compatibilidade</span>
+              <span>{status.pct}%</span>
+            </div>
+            <Bar pct={status.pct} className="bg-gradient-to-r from-electric via-primary to-amber-400" />
           </div>
+
           <p className="mt-4 text-[11px] text-muted-foreground">
-            Próxima evolução em {sync.nextAt}%: {sync.nextStage ? <span className="tracking-[0.2em] text-muted-foreground/60">?????</span> : "máximo atingido"}
+            {status.next ? (
+              <>
+                Próximo registro em {status.next.at}%:{" "}
+                {status.next.hidden
+                  ? <span className="tracking-[0.3em] text-muted-foreground/60">?????</span>
+                  : <span className={status.next.aura}>{status.next.name}</span>}
+              </>
+            ) : (
+              "Registro final atingido."
+            )}
           </p>
         </div>
       </Panel>
 
       <Panel>
-        <SectionTitle icon="🧬" title="Leitura do Sistema" sub="Fatores que alteram sua sincronia" />
+        <SectionTitle icon="🧭" title="Linha de evolução" sub="O Sistema revela um registro por vez" />
+        <div className="space-y-2">
+          {status.ladder.map(({ tier, reached, revealed }, i) => {
+            const isCurrent = i === status.index;
+            return (
+              <div
+                key={tier.key}
+                className={`relative flex items-center gap-3 rounded-2xl p-3 ring-1 transition ${
+                  isCurrent ? `${tier.ring} bg-white/[0.05]` : reached ? "ring-hair bg-white/[0.03]" : "ring-hair bg-white/[0.02] opacity-70"
+                }`}
+              >
+                <span className={`text-xl ${revealed ? "" : "grayscale opacity-60"}`}>{revealed ? tier.icon : "🔒"}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className={`text-[13px] font-semibold ${revealed ? (reached ? tier.aura : "") : "tracking-[0.3em] text-muted-foreground/60"}`}>
+                      {revealed ? tier.name : "?????"}
+                    </p>
+                    {isCurrent && <span className="text-[9px] rounded-full bg-electric/20 text-electric px-2 py-0.5">Atual</span>}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {reached ? tier.desc : revealed ? `Liberado em ${tier.at}% de compatibilidade` : "Registro selado pelo Sistema."}
+                  </p>
+                </div>
+                {reached && <Check className="h-4 w-4 text-emerald-300" />}
+              </div>
+            );
+          })}
+          {STATUS_TIERS.length === status.ladder.length && (
+            <p className="pt-1 text-center text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50">
+              existem registros além destes
+            </p>
+          )}
+        </div>
+      </Panel>
+
+      <Panel>
+        <SectionTitle icon="🧬" title="Leitura do Sistema" sub="Fatores que alteram sua compatibilidade" />
         <ul className="text-[12px] text-muted-foreground space-y-1.5">
           <li>⭐ Nível do personagem — até 30%</li>
           <li>🔥 Sequência de dias ativos — até 20%</li>
@@ -586,6 +641,7 @@ function StatusSection({ state }: { state: S }) {
     </div>
   );
 }
+
 
 /* ───────── 3. Atributos ───────── */
 
