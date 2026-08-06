@@ -15,8 +15,10 @@ import { RANKS, computeRank } from "@/lib/ranks";
 import {
   attrMeta, computeSync, computePassives, useAchievementsList, useBossHistory,
   monthlyBoss, achievementTier, TIER_STYLE, INV_CATEGORIES, inventoryCategory, isRelic,
+  computeStatus, STATUS_TIERS,
   type AchvTier,
 } from "@/lib/system";
+import { StatusUnlockOverlay, useStatusUnlock } from "@/components/sistema/status-unlock";
 import { useLifeScoreHistory } from "@/lib/life-state";
 import { useXpHistory, usePurchases, xpBuckets, xpSeries, xpBySource, useEquipTitle } from "@/lib/system-data";
 import { SysModal, Clickable, ModalRow, ModalBlock, Spark, PurchaseFlow, BoxOpening } from "@/components/sistema/system-ui";
