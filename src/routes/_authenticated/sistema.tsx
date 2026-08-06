@@ -197,6 +197,7 @@ function Overview({ state }: { state: S }) {
   const rank = RANKS.find((r) => r.id === (p?.current_rank ?? "beginner")) ?? RANKS[0];
   const coins = state?.coins?.balance ?? 0;
   const [modal, setModal] = useState<string | null>(null);
+  const sysStatus = computeStatus(state);
   const close = () => setModal(null);
 
   const buckets = xpBuckets(xpRows ?? []);
